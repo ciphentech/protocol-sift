@@ -95,6 +95,7 @@ echo
 
 SKILLS=(
     memory-analysis
+    ntp-enrichment
     plaso-timeline
     sleuthkit
     windows-artifacts
@@ -119,12 +120,31 @@ echo
 
 info "Installing analysis scripts…"
 mkdir -p "$CLAUDE_DIR/analysis-scripts"
-src="$REPO_DIR/analysis-scripts/generate_pdf_report.py"
-if [[ -f "$src" ]]; then
-    cp "$src" "$CLAUDE_DIR/analysis-scripts/generate_pdf_report.py"
-    ok "  generate_pdf_report.py → $CLAUDE_DIR/analysis-scripts/"
+
+for script in generate_pdf_report.py ntp_resolver.py ntp_enricher.py; do
+    src="$REPO_DIR/analysis-scripts/$script"
+    if [[ -f "$src" ]]; then
+        cp "$src" "$CLAUDE_DIR/analysis-scripts/$script"
+        ok "  $script → $CLAUDE_DIR/analysis-scripts/"
+    else
+        warn "  analysis-scripts/$script not found, skipping."
+    fi
+done
+echo
+
+# ── NTP enrichment Python dependencies ───────────────────────────────────────
+
+REQ="$REPO_DIR/requirements.txt"
+if [[ -f "$REQ" ]]; then
+    info "Installing NTP enrichment Python dependencies…"
+    if pip3 install -r "$REQ" --quiet; then
+        ok "Python dependencies installed (pytest, pandas, ntplib)."
+    else
+        warn "pip3 install failed. Install manually:"
+        warn "  pip3 install -r requirements.txt"
+    fi
 else
-    warn "  analysis-scripts/generate_pdf_report.py not found, skipping."
+    warn "requirements.txt not found, skipping Python dependency install."
 fi
 echo
 

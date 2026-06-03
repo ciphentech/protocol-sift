@@ -1,0 +1,8 @@
+# Test harness
+pytest>=7.4,<9.0
+
+# Data handling — spec §6 requires pandas ≥ 2.0
+pandas>=2.0,<3.0
+
+# NTP enrichment
+ntplib>=0.4.0
