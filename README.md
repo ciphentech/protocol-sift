@@ -17,10 +17,13 @@ rules, forensic tool skill files, per-case project templates, and PDF report too
 
 | Requirement | Notes |
 |-------------|-------|
-| SANS SIFT Workstation | Ubuntu x86-64, standard SIFT tool set installed |
+| SANS SIFT Workstation | Ubuntu x86-64 (22.04+), standard SIFT tool set installed |
 | Claude Code CLI | `npm install -g @anthropic-ai/claude-code` (or via your org's approved channel) |
 | Anthropic API key | Set in `~/.claude/.credentials.json` after first `claude` run — **never copy** this file |
-| Python 3 + WeasyPrint | `pip3 install weasyprint` — required for PDF report generation |
+| Python 3.10+ | Built into the SIFT image; verify with `python3 --version` |
+| Python dependencies | `pip3 install -r requirements.txt` — installs `pytest`, `pandas`, `ntplib` for NTP enrichment |
+| WeasyPrint | `pip3 install weasyprint` — required for PDF report generation only |
+| NIST API key | Required for NIST-anchored NTP enrichment; obtain at [nvd.nist.gov/developers/api-key-requested](https://nvd.nist.gov/developers/api-key-requested) and set `export NIST_API_KEY="..."` in your shell |
 | dotnet runtime v6 | Pre-installed on SIFT; EZ Tools run against `/opt/zimmermantools/` |
 
 ---
@@ -42,7 +45,7 @@ curl -fsSL https://raw.githubusercontent.com/teamdfir/protocol-sift/main/install
 The script will:
 - Clone this repo into a temporary directory (cleaned up on exit)
 - Back up any existing `~/.claude/{CLAUDE.md,settings.json,settings.local.json}` to `.bak-<timestamp>` before overwriting
-- Install global config, all skills, the case template, and the PDF analysis script into `~/.claude/`
+- Install global config, all skills, the case template, analysis scripts (including NTP enrichment tools), and Python dependencies into `~/.claude/`
 - Print WeasyPrint install instructions (WeasyPrint prompt is skipped when stdin is piped)
 
 To also install WeasyPrint in the same step, run the script directly instead:
@@ -88,20 +91,24 @@ Keep the cloned directory around if you want to pull updates later (`git pull &&
 protocol-sift/
 ├── README.md                          ← this file
 ├── install.sh                         ← automated installer
+├── requirements.txt                   ← Python dependencies (pytest, pandas, ntplib)
 ├── global/
 │   ├── CLAUDE.md                      ← global behavioral instructions (1)
 │   ├── settings.json                  ← tool permissions + Stop hook    (2)
 │   └── settings.local.json            ← local sudo / apt overrides      (3)
 ├── skills/
 │   ├── memory-analysis/SKILL.md       ← Volatility 3 skill              (4)
-│   ├── plaso-timeline/SKILL.md        ← Plaso / log2timeline skill      (5)
-│   ├── sleuthkit/SKILL.md             ← Sleuth Kit / TSK skill          (6)
-│   ├── windows-artifacts/SKILL.md     ← EZ Tools / EVTX / Registry      (7)
-│   └── yara-hunting/SKILL.md          ← YARA / threat hunting skill     (8)
+│   ├── ntp-enrichment/SKILL.md        ← NTP time enrichment skill       (5)
+│   ├── plaso-timeline/SKILL.md        ← Plaso / log2timeline skill      (6)
+│   ├── sleuthkit/SKILL.md             ← Sleuth Kit / TSK skill          (7)
+│   ├── windows-artifacts/SKILL.md     ← EZ Tools / EVTX / Registry      (8)
+│   └── yara-hunting/SKILL.md          ← YARA / threat hunting skill     (9)
 ├── case-templates/
-│   └── CLAUDE.md                      ← per-case project template       (9)
+│   └── CLAUDE.md                      ← per-case project template       (10)
 └── analysis-scripts/
-    └── generate_pdf_report.py         ← WeasyPrint PDF generator        (10)
+    ├── generate_pdf_report.py         ← WeasyPrint PDF generator        (11)
+    ├── ntp_resolver.py                ← NTP source resolution tool      (12)
+    └── ntp_enricher.py                ← NTP field computation + writer  (13)
 ```
 
 ---
@@ -170,7 +177,7 @@ cp global/settings.local.json ~/.claude/settings.local.json
 
 ---
 
-### (4–8) skills/ → `~/.claude/skills/`
+### (4–9) skills/ → `~/.claude/skills/`
 
 **What they are:** Skill files are domain-specific prompt libraries that Claude loads
 on demand. Each `SKILL.md` contains exact CLI invocations, common flags, known
@@ -179,6 +186,7 @@ gotchas, and output interpretation guidance for a specific forensic toolset.
 | Skill file | Domain | Key tools covered |
 |------------|--------|-------------------|
 | `memory-analysis/SKILL.md` | Memory forensics | Volatility 3 plugins, symbol resolution, memory baseliner |
+| `ntp-enrichment/SKILL.md` | NTP time enrichment | ntp_resolver.py, ntp_enricher.py, NIST-anchored timestamp normalization |
 | `plaso-timeline/SKILL.md` | Timeline generation | log2timeline.py, psort.py, pinfo.py, super-timeline filters |
 | `sleuthkit/SKILL.md` | Filesystem forensics | fls, icat, mmls, mactime, tsk_recover, ewfmount offsets |
 | `windows-artifacts/SKILL.md` | Windows artifacts | EZ Tools suite, EvtxECmd, MFTECmd, RECmd, AmcacheParser |
@@ -187,16 +195,18 @@ gotchas, and output interpretation guidance for a specific forensic toolset.
 **Install:**
 ```bash
 mkdir -p ~/.claude/skills/memory-analysis \
+         ~/.claude/skills/ntp-enrichment \
          ~/.claude/skills/plaso-timeline \
          ~/.claude/skills/sleuthkit \
          ~/.claude/skills/windows-artifacts \
          ~/.claude/skills/yara-hunting
 
-cp skills/memory-analysis/SKILL.md  ~/.claude/skills/memory-analysis/SKILL.md
-cp skills/plaso-timeline/SKILL.md   ~/.claude/skills/plaso-timeline/SKILL.md
-cp skills/sleuthkit/SKILL.md        ~/.claude/skills/sleuthkit/SKILL.md
+cp skills/memory-analysis/SKILL.md   ~/.claude/skills/memory-analysis/SKILL.md
+cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
+cp skills/plaso-timeline/SKILL.md    ~/.claude/skills/plaso-timeline/SKILL.md
+cp skills/sleuthkit/SKILL.md         ~/.claude/skills/sleuthkit/SKILL.md
 cp skills/windows-artifacts/SKILL.md ~/.claude/skills/windows-artifacts/SKILL.md
-cp skills/yara-hunting/SKILL.md     ~/.claude/skills/yara-hunting/SKILL.md
+cp skills/yara-hunting/SKILL.md      ~/.claude/skills/yara-hunting/SKILL.md
 ```
 
 **How Claude uses them:** The global `CLAUDE.md` contains a routing table that
@@ -240,7 +250,7 @@ content and fill in new case details before use.
 
 ---
 
-### (10) analysis-scripts/generate_pdf_report.py → `/cases/<casename>/analysis/generate_pdf_report.py`
+### (11) analysis-scripts/generate_pdf_report.py → `/cases/<casename>/analysis/generate_pdf_report.py`
 
 **What it is:** A reusable WeasyPrint-based PDF report generator. Claude uses this
 as its output engine for all forensic PDF reports. It accepts a `data` dict and an
@@ -292,6 +302,30 @@ and `\S` escape sequences.
 
 ---
 
+### (12–13) analysis-scripts/ntp_resolver.py + ntp_enricher.py → `~/.claude/analysis-scripts/`
+
+**What they are:** The NTP enrichment tool layer. The agent calls these via `Bash()` as part of the `ntp-enrichment` skill workflow.
+
+| Script | Purpose |
+|--------|---------|
+| `ntp_resolver.py` | Resolves the NTP source for the investigated system — extracts EID 35/37/259/260 from the Plaso export, or falls back to analyst prompt / environment assumption. Emits an `NTPContext` with `ConfidenceRank`. |
+| `ntp_enricher.py` | Reads the psort CSV, computes `ntp_source`, `nist_time`, `ntp_offset_s`, `ntp_assumption`, `nist_delta_s` per row, writes the enriched CSV sorted on `nist_time`, and emits a manifest JSON the agent reads to decide whether to accept or self-correct. |
+
+**Install** (handled automatically by `install.sh`):
+```bash
+cp analysis-scripts/ntp_resolver.py  ~/.claude/analysis-scripts/ntp_resolver.py
+cp analysis-scripts/ntp_enricher.py  ~/.claude/analysis-scripts/ntp_enricher.py
+pip3 install -r requirements.txt
+```
+
+**NIST API key** — required for NIST-anchored output:
+```bash
+export NIST_API_KEY="your-key-here"   # add to ~/.bashrc for persistence
+```
+Obtain a key at [nvd.nist.gov/developers/api-key-requested](https://nvd.nist.gov/developers/api-key-requested). Without it the agent will halt and warn before any timestamp computation begins.
+
+---
+
 ## Manual Install Script (copy-paste)
 
 If you prefer not to run `install.sh` directly, copy-paste the following from the
@@ -310,12 +344,14 @@ cp global/settings.local.json ~/.claude/settings.local.json
 
 # 2. Skills
 mkdir -p ~/.claude/skills/memory-analysis \
+         ~/.claude/skills/ntp-enrichment \
          ~/.claude/skills/plaso-timeline \
          ~/.claude/skills/sleuthkit \
          ~/.claude/skills/windows-artifacts \
          ~/.claude/skills/yara-hunting
 
 cp skills/memory-analysis/SKILL.md   ~/.claude/skills/memory-analysis/SKILL.md
+cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
 cp skills/plaso-timeline/SKILL.md    ~/.claude/skills/plaso-timeline/SKILL.md
 cp skills/sleuthkit/SKILL.md         ~/.claude/skills/sleuthkit/SKILL.md
 cp skills/windows-artifacts/SKILL.md ~/.claude/skills/windows-artifacts/SKILL.md
@@ -325,8 +361,11 @@ cp skills/yara-hunting/SKILL.md      ~/.claude/skills/yara-hunting/SKILL.md
 mkdir -p ~/.claude/case-templates ~/.claude/analysis-scripts
 cp case-templates/CLAUDE.md ~/.claude/case-templates/CLAUDE.md
 cp analysis-scripts/generate_pdf_report.py ~/.claude/analysis-scripts/generate_pdf_report.py
+cp analysis-scripts/ntp_resolver.py        ~/.claude/analysis-scripts/ntp_resolver.py
+cp analysis-scripts/ntp_enricher.py        ~/.claude/analysis-scripts/ntp_enricher.py
 
-# 4. Python dependency for PDF reports
+# 4. Python dependencies (NTP enrichment + PDF reports)
+pip3 install -r requirements.txt
 pip3 install weasyprint
 
 echo "Done. Start a new case with:"
