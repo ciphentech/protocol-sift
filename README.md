@@ -98,17 +98,16 @@ protocol-sift/
 │   └── settings.local.json            ← local sudo / apt overrides      (3)
 ├── skills/
 │   ├── memory-analysis/SKILL.md       ← Volatility 3 skill              (4)
-│   ├── plaso-timeline/SKILL.md        ← Plaso / log2timeline skill      (5)
-│   ├── ntp-enrichment/SKILL.md        ← NTP time enrichment skill       (6)
-│   ├── sleuthkit/SKILL.md             ← Sleuth Kit / TSK skill          (7)
-│   ├── windows-artifacts/SKILL.md     ← EZ Tools / EVTX / Registry      (8)
-│   └── yara-hunting/SKILL.md          ← YARA / threat hunting skill     (9)
+│   ├── plaso-timeline/SKILL.md        ← Plaso / log2timeline + NTP enrichment skill (5)
+│   ├── sleuthkit/SKILL.md             ← Sleuth Kit / TSK skill          (6)
+│   ├── windows-artifacts/SKILL.md     ← EZ Tools / EVTX / Registry      (7)
+│   └── yara-hunting/SKILL.md          ← YARA / threat hunting skill     (8)
 ├── case-templates/
 │   └── CLAUDE.md                      ← per-case project template       (10)
 └── analysis-scripts/
-    ├── generate_pdf_report.py         ← WeasyPrint PDF generator        (11)
-    ├── ntp_resolver.py                ← NTP source resolution tool      (12)
-    └── ntp_enricher.py                ← NTP field computation + writer  (13)
+    ├── generate_pdf_report.py         ← WeasyPrint PDF generator        (9)
+    ├── ntp_resolver.py                ← NTP source resolution tool      (10)
+    └── ntp_enricher.py                ← NTP field computation + writer  (11)
 ```
 
 ---
@@ -177,7 +176,7 @@ cp global/settings.local.json ~/.claude/settings.local.json
 
 ---
 
-### (4–9) skills/ → `~/.claude/skills/`
+### (4–8) skills/ → `~/.claude/skills/`
 
 **What they are:** Skill files are domain-specific prompt libraries that Claude loads
 on demand. Each `SKILL.md` contains exact CLI invocations, common flags, known
@@ -186,8 +185,7 @@ gotchas, and output interpretation guidance for a specific forensic toolset.
 | Skill file | Domain | Key tools covered |
 |------------|--------|-------------------|
 | `memory-analysis/SKILL.md` | Memory forensics | Volatility 3 plugins, symbol resolution, memory baseliner |
-| `plaso-timeline/SKILL.md` | Timeline generation | log2timeline.py, psort.py, pinfo.py, super-timeline filters |
-| `ntp-enrichment/SKILL.md` | NTP time enrichment | ntp_resolver.py, ntp_enricher.py, NIST-anchored timestamp normalization |
+| `plaso-timeline/SKILL.md` | Timeline generation + NTP enrichment | log2timeline.py, psort.py, pinfo.py, super-timeline filters, NIST-anchored timestamp normalization |
 | `sleuthkit/SKILL.md` | Filesystem forensics | fls, icat, mmls, mactime, tsk_recover, ewfmount offsets |
 | `windows-artifacts/SKILL.md` | Windows artifacts | EZ Tools suite, EvtxECmd, MFTECmd, RECmd, AmcacheParser |
 | `yara-hunting/SKILL.md` | Threat hunting | YARA rules, IOC sweeps, bulk scanning |
@@ -196,14 +194,12 @@ gotchas, and output interpretation guidance for a specific forensic toolset.
 ```bash
 mkdir -p ~/.claude/skills/memory-analysis \
          ~/.claude/skills/plaso-timeline \
-         ~/.claude/skills/ntp-enrichment \
          ~/.claude/skills/sleuthkit \
          ~/.claude/skills/windows-artifacts \
          ~/.claude/skills/yara-hunting
 
 cp skills/memory-analysis/SKILL.md   ~/.claude/skills/memory-analysis/SKILL.md
 cp skills/plaso-timeline/SKILL.md    ~/.claude/skills/plaso-timeline/SKILL.md
-cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
 cp skills/sleuthkit/SKILL.md         ~/.claude/skills/sleuthkit/SKILL.md
 cp skills/windows-artifacts/SKILL.md ~/.claude/skills/windows-artifacts/SKILL.md
 cp skills/yara-hunting/SKILL.md      ~/.claude/skills/yara-hunting/SKILL.md
@@ -215,7 +211,7 @@ reads the skill file at task time — you do not need to invoke them manually.
 
 ---
 
-### (9) case-templates/CLAUDE.md → `/cases/<casename>/CLAUDE.md`
+### (9) case-templates/ → `/cases/<casename>/CLAUDE.md`
 
 **What it is:** A per-case project CLAUDE.md. When you `cd /cases/<casename>` and
 launch `claude`, this file is loaded automatically as project-level instructions,
@@ -250,7 +246,7 @@ content and fill in new case details before use.
 
 ---
 
-### (11) analysis-scripts/generate_pdf_report.py → `/cases/<casename>/analysis/generate_pdf_report.py`
+### (10) analysis-scripts/generate_pdf_report.py → `/cases/<casename>/analysis/generate_pdf_report.py`
 
 **What it is:** A reusable WeasyPrint-based PDF report generator. Claude uses this
 as its output engine for all forensic PDF reports. It accepts a `data` dict and an
@@ -302,7 +298,7 @@ and `\S` escape sequences.
 
 ---
 
-### (12–13) analysis-scripts/ntp_resolver.py + ntp_enricher.py → `~/.claude/analysis-scripts/`
+### (11) analysis-scripts/ntp_resolver.py + ntp_enricher.py → `~/.claude/analysis-scripts/`
 
 **What they are:** The NTP enrichment tool layer. The agent calls these via `Bash()` as part of the `ntp-enrichment` skill workflow.
 
@@ -345,14 +341,12 @@ cp global/settings.local.json ~/.claude/settings.local.json
 # 2. Skills
 mkdir -p ~/.claude/skills/memory-analysis \
          ~/.claude/skills/plaso-timeline \
-         ~/.claude/skills/ntp-enrichment \
          ~/.claude/skills/sleuthkit \
          ~/.claude/skills/windows-artifacts \
          ~/.claude/skills/yara-hunting
 
 cp skills/memory-analysis/SKILL.md   ~/.claude/skills/memory-analysis/SKILL.md
 cp skills/plaso-timeline/SKILL.md    ~/.claude/skills/plaso-timeline/SKILL.md
-cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
 cp skills/sleuthkit/SKILL.md         ~/.claude/skills/sleuthkit/SKILL.md
 cp skills/windows-artifacts/SKILL.md ~/.claude/skills/windows-artifacts/SKILL.md
 cp skills/yara-hunting/SKILL.md      ~/.claude/skills/yara-hunting/SKILL.md

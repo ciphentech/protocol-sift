@@ -133,7 +133,7 @@ After `bash install.sh`:
 | Path | Purpose |
 |---|---|
 | `~/.claude/skills/timeline-correlator/SKILL.md` | v2 skill (documentation only — no .py / .sh inside) |
-| `~/.claude/skills/{memory-analysis,plaso-timeline,ntp-enrichment,sleuthkit,windows-artifacts,yara-hunting}/` | All skills |
+| `~/.claude/skills/{memory-analysis,plaso-timeline,sleuthkit,windows-artifacts,yara-hunting}/` | All skills |
 | `~/.claude/analysis-scripts/tlcorr_*.py` | Stdlib helpers: filter, annotate-source, dedupe, attck-lookup, map, export, capture-session |
 | `~/.claude/analysis-scripts/tlcorr_pipeline.sh` | One-command orchestrator |
 | `~/.claude/analysis-scripts/tlcorr_viewer/` | Air-gap-safe vanilla-JS viewer + launch.sh |
