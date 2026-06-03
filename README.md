@@ -98,8 +98,8 @@ protocol-sift/
 │   └── settings.local.json            ← local sudo / apt overrides      (3)
 ├── skills/
 │   ├── memory-analysis/SKILL.md       ← Volatility 3 skill              (4)
-│   ├── ntp-enrichment/SKILL.md        ← NTP time enrichment skill       (5)
-│   ├── plaso-timeline/SKILL.md        ← Plaso / log2timeline skill      (6)
+│   ├── plaso-timeline/SKILL.md        ← Plaso / log2timeline skill      (5)
+│   ├── ntp-enrichment/SKILL.md        ← NTP time enrichment skill       (6)
 │   ├── sleuthkit/SKILL.md             ← Sleuth Kit / TSK skill          (7)
 │   ├── windows-artifacts/SKILL.md     ← EZ Tools / EVTX / Registry      (8)
 │   └── yara-hunting/SKILL.md          ← YARA / threat hunting skill     (9)
@@ -186,8 +186,8 @@ gotchas, and output interpretation guidance for a specific forensic toolset.
 | Skill file | Domain | Key tools covered |
 |------------|--------|-------------------|
 | `memory-analysis/SKILL.md` | Memory forensics | Volatility 3 plugins, symbol resolution, memory baseliner |
-| `ntp-enrichment/SKILL.md` | NTP time enrichment | ntp_resolver.py, ntp_enricher.py, NIST-anchored timestamp normalization |
 | `plaso-timeline/SKILL.md` | Timeline generation | log2timeline.py, psort.py, pinfo.py, super-timeline filters |
+| `ntp-enrichment/SKILL.md` | NTP time enrichment | ntp_resolver.py, ntp_enricher.py, NIST-anchored timestamp normalization |
 | `sleuthkit/SKILL.md` | Filesystem forensics | fls, icat, mmls, mactime, tsk_recover, ewfmount offsets |
 | `windows-artifacts/SKILL.md` | Windows artifacts | EZ Tools suite, EvtxECmd, MFTECmd, RECmd, AmcacheParser |
 | `yara-hunting/SKILL.md` | Threat hunting | YARA rules, IOC sweeps, bulk scanning |
@@ -195,15 +195,15 @@ gotchas, and output interpretation guidance for a specific forensic toolset.
 **Install:**
 ```bash
 mkdir -p ~/.claude/skills/memory-analysis \
-         ~/.claude/skills/ntp-enrichment \
          ~/.claude/skills/plaso-timeline \
+         ~/.claude/skills/ntp-enrichment \
          ~/.claude/skills/sleuthkit \
          ~/.claude/skills/windows-artifacts \
          ~/.claude/skills/yara-hunting
 
 cp skills/memory-analysis/SKILL.md   ~/.claude/skills/memory-analysis/SKILL.md
-cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
 cp skills/plaso-timeline/SKILL.md    ~/.claude/skills/plaso-timeline/SKILL.md
+cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
 cp skills/sleuthkit/SKILL.md         ~/.claude/skills/sleuthkit/SKILL.md
 cp skills/windows-artifacts/SKILL.md ~/.claude/skills/windows-artifacts/SKILL.md
 cp skills/yara-hunting/SKILL.md      ~/.claude/skills/yara-hunting/SKILL.md
@@ -344,15 +344,15 @@ cp global/settings.local.json ~/.claude/settings.local.json
 
 # 2. Skills
 mkdir -p ~/.claude/skills/memory-analysis \
-         ~/.claude/skills/ntp-enrichment \
          ~/.claude/skills/plaso-timeline \
+         ~/.claude/skills/ntp-enrichment \
          ~/.claude/skills/sleuthkit \
          ~/.claude/skills/windows-artifacts \
          ~/.claude/skills/yara-hunting
 
 cp skills/memory-analysis/SKILL.md   ~/.claude/skills/memory-analysis/SKILL.md
-cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
 cp skills/plaso-timeline/SKILL.md    ~/.claude/skills/plaso-timeline/SKILL.md
+cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
 cp skills/sleuthkit/SKILL.md         ~/.claude/skills/sleuthkit/SKILL.md
 cp skills/windows-artifacts/SKILL.md ~/.claude/skills/windows-artifacts/SKILL.md
 cp skills/yara-hunting/SKILL.md      ~/.claude/skills/yara-hunting/SKILL.md

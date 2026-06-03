@@ -95,8 +95,8 @@ echo
 
 SKILLS=(
     memory-analysis
-    ntp-enrichment
     plaso-timeline
+    ntp-enrichment
     sleuthkit
     windows-artifacts
     yara-hunting
