@@ -127,10 +127,38 @@
       "Bash(wget:*)",
       "Bash(curl:*)",
       "Bash(ssh:*)",
-      "WebFetch"
+      "WebFetch",
+      "Write(/cases/**)",
+      "Write(/mnt/**)",
+      "Write(/media/**)",
+      "Edit(/cases/**)",
+      "Edit(/mnt/**)",
+      "Edit(/media/**)"
     ]
   },
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/pretool_block_cases.py\""
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$HOME/.claude/hooks/log_agent_trace.py\""
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

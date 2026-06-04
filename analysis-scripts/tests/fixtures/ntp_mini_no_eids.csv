@@ -1,0 +1,7 @@
+date,time,timezone,MACB,source,sourcetype,type,user,host,short,desc,version,filename,inode,notes,format,extra
+08/30/2018,03:01:02,UTC,M...,EVT,WinEVTX,Creation Time,-,WORKSTATION01,[4624 / 0x0000],[4624 / 0x0000] An account was successfully logged on.,2,C:/Windows/System32/winevt/Logs/System.evtx,-,-,winevtx,-
+08/30/2018,03:05:44,UTC,M...,EVT,WinEVTX,Creation Time,-,WORKSTATION01,[4688 / 0x0000],[4688 / 0x0000] A new process has been created.,2,C:/Windows/System32/winevt/Logs/System.evtx,-,-,winevtx,-
+08/30/2018,04:00:00,UTC,MACB,FILE,filestat,mtime,-,WORKSTATION01,report.docx,File system stat for report.docx,2,C:/Users/jdoe/report.docx,-,-,winevtx,-
+08/30/2018,04:01:30,UTC,MACB,FILE,filestat,mtime,-,WORKSTATION01,data.xlsx,File system stat for data.xlsx,2,C:/Users/jdoe/data.xlsx,-,-,winevtx,-
+08/30/2018,05:00:00,UTC,M...,REG,winreg,Last Written Time,-,WORKSTATION01,HKLM/Software/Microsoft/Windows/CurrentVersion/Run,Registry key HKLM/Software/Microsoft/Windows/CurrentVersion/Run last written,2,C:/Windows/System32/config/SOFTWARE,-,-,winevtx,-
+08/30/2018,05:01:00,UTC,M...,REG,winreg,Last Written Time,-,WORKSTATION01,HKLM/System/CurrentControlSet/Services/W32Time,Registry key HKLM/System/CurrentControlSet/Services/W32Time last written,2,C:/Windows/System32/config/SOFTWARE,-,-,winevtx,-
