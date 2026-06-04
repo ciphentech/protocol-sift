@@ -1,0 +1,4 @@
+date,time,timezone,MACB,source,sourcetype,type,user,host,short,desc,version,filename,inode,notes,format,extra
+08/30/2018,02:05:15,UTC,M...,EVT,WinEVTX,Creation Time,-,WORKSTATION01,[35 / 0x0023],"[35 / 0x0023] The time service is now synchronizing the system time with the time source. Strings: ['base-dc.shieldbase.lan', '20000000000']",2,C:/Windows/System32/winevt/Logs/System.evtx,-,-,winevtx,-
+08/30/2018,03:01:02,UTC,M...,EVT,WinEVTX,Creation Time,-,WORKSTATION01,[4624 / 0x0000],[4624 / 0x0000] An account was successfully logged on.,2,C:/Windows/System32/winevt/Logs/System.evtx,-,-,winevtx,-
+08/30/2018,04:00:00,UTC,MACB,FILE,filestat,mtime,-,WORKSTATION01,report.docx,File system stat for report.docx,2,C:/Users/jdoe/report.docx,-,-,winevtx,-

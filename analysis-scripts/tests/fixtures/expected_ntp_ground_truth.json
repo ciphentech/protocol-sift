@@ -1,0 +1,27 @@
+{
+  "ntp_source": "base-dc.shieldbase.lan",
+  "ntp_assumption": false,
+  "confidence_rank": 1,
+  "eid_35_offsets": [
+    0.0,
+    -0.0004007,
+    -0.0032941
+  ],
+  "eid_260_offsets": [
+    -0.0004007,
+    -0.0032941
+  ],
+  "resolved_offset_s": -0.0004007,
+  "non_ntp_rows": [
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13
+  ],
+  "notes": "hostname from EID 35 strings[0]; resolved offset prefers EID 260 phase offset"
+}

@@ -99,6 +99,7 @@ SKILLS=(
     sleuthkit
     windows-artifacts
     yara-hunting
+    ntp-enrichment
 )
 
 info "Installing skills…"
@@ -120,7 +121,7 @@ echo
 info "Installing analysis scripts…"
 mkdir -p "$CLAUDE_DIR/analysis-scripts"
 
-for script in generate_pdf_report.py ntp_resolver.py ntp_enricher.py; do
+for script in generate_pdf_report.py ntp_resolver.py ntp_enricher.py ntp_nist_client.py ntp_manifest.py; do
     src="$REPO_DIR/analysis-scripts/$script"
     if [[ -f "$src" ]]; then
         cp "$src" "$CLAUDE_DIR/analysis-scripts/$script"
@@ -129,6 +130,21 @@ for script in generate_pdf_report.py ntp_resolver.py ntp_enricher.py; do
         warn "  analysis-scripts/$script not found, skipping."
     fi
 done
+echo
+
+# ── hooks (evidence-write guard + execution trace) ────────────────────────────
+
+info "Installing hooks…"
+mkdir -p "$CLAUDE_DIR/hooks"
+if [[ -d "$REPO_DIR/global/hooks" ]]; then
+    for hook in "$REPO_DIR"/global/hooks/*.py; do
+        [[ -f "$hook" ]] || continue
+        cp "$hook" "$CLAUDE_DIR/hooks/$(basename "$hook")"
+        ok "  global/hooks/$(basename "$hook") → $CLAUDE_DIR/hooks/"
+    done
+else
+    warn "  global/hooks/ not found, skipping."
+fi
 echo
 
 # ── NTP enrichment Python dependencies ───────────────────────────────────────

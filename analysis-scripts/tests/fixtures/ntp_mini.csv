@@ -1,0 +1,15 @@
+date,time,timezone,MACB,source,sourcetype,type,user,host,short,desc,version,filename,inode,notes,format,extra
+08/30/2018,02:05:15,UTC,M...,EVT,WinEVTX,Creation Time,-,WORKSTATION01,[35 / 0x0023],"[35 / 0x0023] The time service is now synchronizing the system time with the time source. Strings: ['base-dc.shieldbase.lan', '0']",2,C:/Windows/System32/winevt/Logs/System.evtx,-,-,winevtx,-
+08/30/2018,02:06:20,UTC,M...,EVT,WinEVTX,Creation Time,-,WORKSTATION01,[35 / 0x0023],"[35 / 0x0023] The time service is now synchronizing the system time with the time source. Strings: ['base-dc.shieldbase.lan', '-4007']",2,C:/Windows/System32/winevt/Logs/System.evtx,-,-,winevtx,-
+08/30/2018,02:07:41,UTC,M...,EVT,WinEVTX,Creation Time,-,WORKSTATION01,[35 / 0x0023],"[35 / 0x0023] The time service is now synchronizing the system time with the time source. Strings: ['base-dc.shieldbase.lan', '-32941']",2,C:/Windows/System32/winevt/Logs/System.evtx,-,-,winevtx,-
+08/30/2018,02:10:01,UTC,M...,EVT,WinEVTX,Creation Time,-,WORKSTATION01,[260 / 0x0104],[260 / 0x0104] NtpClient periodic configuration. Phase Offset: -0.0004007s,2,C:/Windows/System32/winevt/Logs/System.evtx,-,-,winevtx,-
+08/30/2018,02:20:13,UTC,M...,EVT,WinEVTX,Creation Time,-,WORKSTATION01,[260 / 0x0104],[260 / 0x0104] NtpClient periodic configuration. Phase Offset: -0.0032941s,2,C:/Windows/System32/winevt/Logs/System.evtx,-,-,winevtx,-
+08/30/2018,03:01:02,UTC,M...,EVT,WinEVTX,Creation Time,-,WORKSTATION01,[4624 / 0x0000],[4624 / 0x0000] An account was successfully logged on.,2,C:/Windows/System32/winevt/Logs/System.evtx,-,-,winevtx,-
+08/30/2018,03:05:44,UTC,M...,EVT,WinEVTX,Creation Time,-,WORKSTATION01,[4688 / 0x0000],[4688 / 0x0000] A new process has been created.,2,C:/Windows/System32/winevt/Logs/System.evtx,-,-,winevtx,-
+08/30/2018,03:09:10,UTC,M...,EVT,WinEVTX,Creation Time,-,WORKSTATION01,[7045 / 0x0000],[7045 / 0x0000] A service was installed in the system.,2,C:/Windows/System32/winevt/Logs/System.evtx,-,-,winevtx,-
+08/30/2018,04:00:00,UTC,MACB,FILE,filestat,mtime,-,WORKSTATION01,report.docx,File system stat for report.docx,2,C:/Users/jdoe/report.docx,-,-,winevtx,-
+08/30/2018,04:01:30,UTC,MACB,FILE,filestat,mtime,-,WORKSTATION01,data.xlsx,File system stat for data.xlsx,2,C:/Users/jdoe/data.xlsx,-,-,winevtx,-
+08/30/2018,04:02:45,UTC,MACB,FILE,filestat,mtime,-,WORKSTATION01,notes.txt,File system stat for notes.txt,2,C:/Users/jdoe/notes.txt,-,-,winevtx,-
+08/30/2018,05:00:00,UTC,M...,REG,winreg,Last Written Time,-,WORKSTATION01,HKLM/Software/Microsoft/Windows/CurrentVersion/Run,Registry key HKLM/Software/Microsoft/Windows/CurrentVersion/Run last written,2,C:/Windows/System32/config/SOFTWARE,-,-,winevtx,-
+08/30/2018,05:01:00,UTC,M...,REG,winreg,Last Written Time,-,WORKSTATION01,HKLM/System/CurrentControlSet/Services/W32Time,Registry key HKLM/System/CurrentControlSet/Services/W32Time last written,2,C:/Windows/System32/config/SOFTWARE,-,-,winevtx,-
+08/30/2018,05:02:00,UTC,M...,REG,winreg,Last Written Time,-,WORKSTATION01,HKCU/Software/Classes,Registry key HKCU/Software/Classes last written,2,C:/Windows/System32/config/SOFTWARE,-,-,winevtx,-
