@@ -3,7 +3,7 @@
 # Usage: curl -fsSL https://raw.githubusercontent.com/teamdfir/protocol-sift/main/install.sh | bash
 set -euo pipefail
 
-REPO_URL="https://github.com/teamdfir/protocol-sift.git"
+REPO_URL="https://github.com/ciphentech/protocol-sift.git"
 CLAUDE_DIR="${HOME}/.claude"
 TMPDIR_PREFIX="protocol-sift-install"
 
