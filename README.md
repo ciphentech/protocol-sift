@@ -23,7 +23,7 @@ rules, forensic tool skill files, per-case project templates, and PDF report too
 | Python 3.10+ | Built into the SIFT image; verify with `python3 --version` |
 | Python dependencies | `pip3 install -r requirements.txt` — installs `pytest`, `pandas`, `ntplib` for NTP enrichment |
 | WeasyPrint | `pip3 install weasyprint` — required for PDF report generation only |
-| NIST API key | Required for NIST-anchored NTP enrichment; obtain at [nvd.nist.gov/developers/api-key-requested](https://nvd.nist.gov/developers/api-key-requested) and set `export NIST_API_KEY="..."` in your shell |
+| NIST API key | **Optional**, but omitting it means the enrichment falls back to standard NTP rather than the secured sNTP variant. This is discouraged — NTP is an insecure protocol and should only be used in non-production environments. Obtain a key at [nvd.nist.gov/developers/api-key-requested](https://nvd.nist.gov/developers/api-key-requested). See [NIST API Key](#nist-api-key) below for secure setup. |
 | dotnet runtime v6 | Pre-installed on SIFT; EZ Tools run against `/opt/zimmermantools/` |
 
 ---
@@ -91,7 +91,7 @@ Keep the cloned directory around if you want to pull updates later (`git pull &&
 protocol-sift/
 ├── README.md                          ← this file
 ├── install.sh                         ← automated installer
-├── requirements.txt                   ← Python dependencies (pytest, pandas, ntplib)
+├── requirements.txt                   ← Python dependencies (pytest, pandas, ntplib, boto3)
 ├── global/
 │   ├── CLAUDE.md                      ← global behavioral instructions (1)
 │   ├── settings.json                  ← tool permissions + Stop hook    (2)
@@ -110,7 +110,8 @@ protocol-sift/
     ├── ntp_resolver.py                ← NTP source resolution tool      (12)
     ├── ntp_enricher.py                ← NTP field computation + writer  (13)
     ├── ntp_manifest.py                ← manifest JSON writer + rubric   (14)
-    └── ntp_nist_client.py             ← NIST time service client        (15)
+    ├── ntp_nist_client.py             ← NIST time service client        (15)
+    └── sift_logger.py                 ← skill-level forensic audit log  (16)
 ```
 
 ---
@@ -298,9 +299,60 @@ and `\S` escape sequences.
 | `ntp_manifest.py` | Writes the manifest JSON the agent reads to decide whether to accept the result or self-correct (`rubric_pass`, `rubric_failures`, `suggested_corrective_action`). |
 | `ntp_nist_client.py` | Queries the NIST time service to validate the NTP source and derive a clock offset. Requires `NIST_API_KEY` for production use. |
 
-**Install** (handled automatically by `install.sh`). Run `bash install.sh` from the repo root.
+**Install** (handled automatically by `install.sh`):
+```bash
+cp analysis-scripts/ntp_resolver.py    ~/.claude/analysis-scripts/ntp_resolver.py
+cp analysis-scripts/ntp_enricher.py    ~/.claude/analysis-scripts/ntp_enricher.py
+cp analysis-scripts/ntp_manifest.py    ~/.claude/analysis-scripts/ntp_manifest.py
+cp analysis-scripts/ntp_nist_client.py ~/.claude/analysis-scripts/ntp_nist_client.py
+pip3 install -r requirements.txt
+```
 
-**NIST API key** — optional, but omitting it means the enrichment falls back to standard NTP rather than the secured sNTP variant. This is discouraged — NTP is an insecure protocol and should only be used in non-production environments. To work with the NIST NTP API key, review the NIST directions and update the ntp-enrichment skill accordingly, and make sure it knows how you have securely managed your API key. Obtain a key at [nvd.nist.gov/developers/api-key-requested](https://nvd.nist.gov/developers/api-key-requested).
+**NIST API key** — optional, but strongly recommended {#nist-api-key}
+
+Without a key the enrichment falls back to standard NTP, which is an insecure protocol subject to spoofing and man-in-the-middle attacks. Use of plain NTP is **discouraged in production or legal proceedings** and should be limited to lab or non-production environments. With a key, the tooling uses the secured sNTP variant anchored to NIST time services.
+
+**Obtaining a key:**
+1. Visit [nvd.nist.gov/developers/api-key-requested](https://nvd.nist.gov/developers/api-key-requested)
+2. Register with your work email — keys are tied to an identity for accountability
+3. You will receive the key by email; treat it like a password
+
+**Storing the key securely on the SIFT workstation:**
+```bash
+# 1. Add to your personal shell profile — never to a shared or repo file
+echo 'export NIST_API_KEY="your-key-here"' >> ~/.bashrc
+
+cp skills/memory-analysis/SKILL.md   ~/.claude/skills/memory-analysis/SKILL.md
+cp skills/plaso-timeline/SKILL.md    ~/.claude/skills/plaso-timeline/SKILL.md
+cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
+cp skills/sleuthkit/SKILL.md         ~/.claude/skills/sleuthkit/SKILL.md
+cp skills/windows-artifacts/SKILL.md ~/.claude/skills/windows-artifacts/SKILL.md
+cp skills/yara-hunting/SKILL.md      ~/.claude/skills/yara-hunting/SKILL.md
+
+# 3. Case template and analysis scripts (reusable across cases)
+mkdir -p ~/.claude/case-templates ~/.claude/analysis-scripts
+cp case-templates/CLAUDE.md ~/.claude/case-templates/CLAUDE.md
+cp analysis-scripts/generate_pdf_report.py ~/.claude/analysis-scripts/generate_pdf_report.py
+cp analysis-scripts/ntp_resolver.py        ~/.claude/analysis-scripts/ntp_resolver.py
+cp analysis-scripts/ntp_enricher.py        ~/.claude/analysis-scripts/ntp_enricher.py
+cp analysis-scripts/ntp_manifest.py        ~/.claude/analysis-scripts/ntp_manifest.py
+cp analysis-scripts/ntp_nist_client.py     ~/.claude/analysis-scripts/ntp_nist_client.py
+cp analysis-scripts/sift_logger.py         ~/.claude/analysis-scripts/sift_logger.py
+
+# 4. Python dependencies (NTP enrichment + PDF reports)
+pip3 install -r requirements.txt
+pip3 install weasyprint
+
+# 3. Apply immediately in the current session
+source ~/.bashrc
+```
+
+> **Security rules:**
+> - Never hardcode the key in a script or config file inside a case directory
+> - Never commit it to git — add `*.env` and `secrets.*` to `.gitignore`
+> - Never share it in Slack, email, or case documentation
+> - If the key is exposed, revoke it immediately at nvd.nist.gov and request a new one
+> - On shared SIFT workstations, store the key in your user's `~/.bashrc` only — not in `/etc/environment` or any system-wide profile
 
 ---
 
@@ -354,3 +406,153 @@ claude
   after every session — review this log as part of your case documentation
 - All tool outputs use `tee` to write to `./exports/` — raw tool output is preserved
 - Always verify image integrity before analysis: `ewfverify /cases/${CASE}/*.E01`
+
+---
+
+## Audit Logging
+
+Protocol SIFT ships two complementary layers of audit logging.
+
+### Layer 1 — Agent-level trace (always active)
+
+The `PostToolUse` hook in `settings.json` fires after **every Claude tool call** and
+appends a structured JSON line to `~/.protocol-sift/agent_trace.jsonl`. This records
+every `Bash`, `Read`, `Write`, and `Edit` call the agent makes, with timestamp,
+tool name, truncated input, and token usage.
+
+The `Stop` hook appends a conversation summary to `./analysis/forensic_audit.log`
+at the end of every session.
+
+No configuration required — these hooks are installed automatically.
+
+### Layer 2 — Skill-level structured log (`sift_logger.py`)
+
+Python scripts in `analysis-scripts/` emit granular, per-phase events that are
+invisible to the agent-level hook (internal Python file I/O, NIST queries,
+enrichment phases, self-correction loops). These are written by `sift_logger.py`.
+
+**Log files produced per skill run:**
+
+| File | Description |
+|------|-------------|
+| `./logs/<session_id>.jsonl` | Per-session JSONL event stream — one JSON object per line |
+| `./analysis/<session_id>_forensic_audit.log` | Human-readable skill summary with evidence file list and source citations |
+
+Session IDs are unique per run (`SIFT-YYYY-MM-DD-<8-hex-chars>`) — no log is ever
+overwritten.
+
+### Log destination: local-only vs S3
+
+**Local-only mode (default — no configuration required)**
+
+Logs are written to the case working directory. No env vars needed, no network
+access, no boto3 calls.
+
+```
+./logs/<session_id>.jsonl
+./analysis/<session_id>_forensic_audit.log
+```
+
+**S3 mode (opt-in)**
+
+Set the following environment variables before launching `claude` (or add them to
+`~/.bashrc` for persistence):
+
+```bash
+export SIFT_S3_BUCKET=agent_logs_sift   # your S3 bucket name
+export SIFT_S3_REGION=us-west-2          # AWS region
+export SIFT_S3_PREFIX=sift-logs          # key prefix (default: sift-logs)
+```
+
+When `SIFT_S3_BUCKET` is set, each event is also shipped to S3 via a `PutObject`
+of the full accumulated JSONL (the object is replaced on each write, so S3 always
+has the latest coherent log):
+
+```
+s3://<SIFT_S3_BUCKET>/<SIFT_S3_PREFIX>/<YYYY-MM-DD>/<session_id>/events.jsonl
+```
+
+AWS credentials follow the standard boto3 chain:
+1. Environment variables (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`)
+2. `~/.aws/credentials`
+3. EC2 instance profile (if running on AWS)
+
+S3 shipping failures are non-fatal — a warning is printed to stderr and the skill
+continues. Local logging is unaffected.
+
+### Model attribution
+
+The model name is recorded in every `session_init` event. Set it to match the
+Claude model driving the session:
+
+```bash
+export SIFT_AGENT_MODEL=claude-sonnet-4-6   # default
+```
+
+### JSONL event schema
+
+Every line in `<session_id>.jsonl` is a JSON object. The following fields appear
+in all events; additional fields are event-type specific.
+
+| Field | Source | Present in |
+|-------|--------|-----------|
+| `type` | event name | every entry |
+| `session_id` | generated at session start | every entry |
+| `timestamp` | `datetime.now(timezone.utc).isoformat()` — microsecond UTC | every entry |
+| `os_user` | `getpass.getuser()` — OS user who ran the skill | every entry |
+| `skill` | `SiftSession` constructor arg | `session_init` |
+| `model` | `SIFT_AGENT_MODEL` env var | `session_init` |
+| `platform` | `sys.platform` | `session_init` |
+| `project_directory` | `os.getcwd()` at session start | `session_init` |
+| `reasoning` | caller-supplied string explaining the forensic rationale | tool/phase events |
+| `files_accessed` | list of evidence paths read during this phase | tool/phase events |
+| `is_error` | `true` for failure or halt events | error events |
+| `tool_name` | CLI tool invoked | `tool_called` |
+| `tool_input` | exact args dict passed to the tool | `tool_called` |
+| `output_path` | path of any file written | completion events |
+| `duration_s` | wall-clock seconds for the full session | `session_complete`, `session_error` |
+| `exit_code` | process exit code | `session_complete` |
+
+**Example `session_init` entry:**
+```json
+{
+  "type": "session_init",
+  "session_id": "SIFT-2026-06-09-a3f17c2e",
+  "timestamp": "2026-06-09T14:16:07.043821+00:00",
+  "os_user": "sansforensics",
+  "skill": "ntp-enrichment",
+  "model": "claude-sonnet-4-6",
+  "platform": "linux",
+  "project_directory": "/cases/CLIENT-IR-2025-001",
+  "case_dir": "/cases/CLIENT-IR-2025-001",
+  "input": "exports/timeline.csv"
+}
+```
+
+### Adding logging to additional skills
+
+Any Python script in `analysis-scripts/` can participate by importing `SiftSession`:
+
+```python
+from sift_logger import SiftSession
+
+with SiftSession("plaso-timeline", case_dir=args.case_dir) as sess:
+    sess.log(
+        "tool_called",
+        tool_name="log2timeline.py",
+        tool_input=vars(args),
+        reasoning="Building super-timeline from disk image.",
+    )
+    # ... skill logic ...
+    sess.log(
+        "timeline_complete",
+        output_path=str(plaso_path),
+        files_accessed=[args.image],
+        reasoning="log2timeline completed; .plaso artifact written.",
+    )
+    sess.set_exit_code(0)
+```
+
+The `SiftSession` context manager automatically emits `session_init` on entry and
+`session_complete` (or `session_error`) on exit, and writes the
+`<session_id>_forensic_audit.log` summary regardless of how the skill exits.

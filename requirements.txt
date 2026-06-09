@@ -6,3 +6,6 @@ pandas>=2.0,<3.0
 
 # NTP enrichment
 ntplib>=0.4.0
+
+# Audit logging — S3 shipping (optional; local logging works without this)
+boto3>=1.34
