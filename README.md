@@ -312,41 +312,6 @@ pip3 install -r requirements.txt
 
 Without a key the enrichment falls back to standard NTP, which is an insecure protocol subject to spoofing and man-in-the-middle attacks. Use of plain NTP is **discouraged in production or legal proceedings** and should be limited to lab or non-production environments. With a key, the tooling uses the secured sNTP variant anchored to NIST time services.
 
-**Obtaining a key:**
-1. Visit [nvd.nist.gov/developers/api-key-requested](https://nvd.nist.gov/developers/api-key-requested)
-2. Register with your work email — keys are tied to an identity for accountability
-3. You will receive the key by email; treat it like a password
-
-**Storing the key securely on the SIFT workstation:**
-```bash
-# 1. Add to your personal shell profile — never to a shared or repo file
-echo 'export NIST_API_KEY="your-key-here"' >> ~/.bashrc
-
-cp skills/memory-analysis/SKILL.md   ~/.claude/skills/memory-analysis/SKILL.md
-cp skills/plaso-timeline/SKILL.md    ~/.claude/skills/plaso-timeline/SKILL.md
-cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
-cp skills/sleuthkit/SKILL.md         ~/.claude/skills/sleuthkit/SKILL.md
-cp skills/windows-artifacts/SKILL.md ~/.claude/skills/windows-artifacts/SKILL.md
-cp skills/yara-hunting/SKILL.md      ~/.claude/skills/yara-hunting/SKILL.md
-
-# 3. Case template and analysis scripts (reusable across cases)
-mkdir -p ~/.claude/case-templates ~/.claude/analysis-scripts
-cp case-templates/CLAUDE.md ~/.claude/case-templates/CLAUDE.md
-cp analysis-scripts/generate_pdf_report.py ~/.claude/analysis-scripts/generate_pdf_report.py
-cp analysis-scripts/ntp_resolver.py        ~/.claude/analysis-scripts/ntp_resolver.py
-cp analysis-scripts/ntp_enricher.py        ~/.claude/analysis-scripts/ntp_enricher.py
-cp analysis-scripts/ntp_manifest.py        ~/.claude/analysis-scripts/ntp_manifest.py
-cp analysis-scripts/ntp_nist_client.py     ~/.claude/analysis-scripts/ntp_nist_client.py
-cp analysis-scripts/sift_logger.py         ~/.claude/analysis-scripts/sift_logger.py
-
-# 4. Python dependencies (NTP enrichment + PDF reports)
-pip3 install -r requirements.txt
-pip3 install weasyprint
-
-# 3. Apply immediately in the current session
-source ~/.bashrc
-```
-
 > **Security rules:**
 > - Never hardcode the key in a script or config file inside a case directory
 > - Never commit it to git — add `*.env` and `secrets.*` to `.gitignore`
