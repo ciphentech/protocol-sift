@@ -195,23 +195,6 @@ gotchas, and output interpretation guidance for a specific forensic toolset.
 | `windows-artifacts/SKILL.md` | Windows artifacts | EZ Tools suite, EvtxECmd, MFTECmd, RECmd, AmcacheParser |
 | `yara-hunting/SKILL.md` | Threat hunting | YARA rules, IOC sweeps, bulk scanning |
 
-**Install:**
-```bash
-mkdir -p ~/.claude/skills/memory-analysis \
-         ~/.claude/skills/plaso-timeline \
-         ~/.claude/skills/ntp-enrichment \
-         ~/.claude/skills/sleuthkit \
-         ~/.claude/skills/windows-artifacts \
-         ~/.claude/skills/yara-hunting
-
-cp skills/memory-analysis/SKILL.md   ~/.claude/skills/memory-analysis/SKILL.md
-cp skills/plaso-timeline/SKILL.md    ~/.claude/skills/plaso-timeline/SKILL.md
-cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
-cp skills/sleuthkit/SKILL.md         ~/.claude/skills/sleuthkit/SKILL.md
-cp skills/windows-artifacts/SKILL.md ~/.claude/skills/windows-artifacts/SKILL.md
-cp skills/yara-hunting/SKILL.md      ~/.claude/skills/yara-hunting/SKILL.md
-```
-
 **How Claude uses them:** The global `CLAUDE.md` contains a routing table that
 tells Claude which skill file to consult before using each tool category. Claude
 reads the skill file at task time — you do not need to invoke them manually.
