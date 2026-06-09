@@ -329,12 +329,11 @@ def main(argv: Optional[list[str]] = None) -> int:
     # Import here so the module imports cleanly even if siblings are absent.
     import ntp_manifest
     from ntp_nist_client import DEFAULT_SERVERS, NistUnreachable, query
+    from sift_logger import SiftSession
 
     csv_path = Path(args.input)
     output_path = Path(args.output)
     output_dir = output_path.parent
-
-    df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
 
     resolve_kwargs = dict(
         cli_ntp_source=args.ntp_source,
@@ -345,71 +344,145 @@ def main(argv: Optional[list[str]] = None) -> int:
         linux_distro=args.linux_distro,
         windows_domain_joined=args.windows_domain_joined,
     )
-    ctx = resolve_ntp_source(df, **resolve_kwargs)
 
-    # --skip-ntp: pass through, emit manifest, done.
-    if args.skip_ntp or not ctx.ntp_source:
-        result = enrich(csv_path, NTPContext(), output_path)
-        report = ntp_manifest.emit(ctx, [], result, output_dir, cli_args=vars(args))
-        print(f"[ntp-enrichment] accuracy report: {report}")
-        return 0
-
-    # NIST validation query (fail closed on total unreachability — SPEC §3.2).
-    nist = None
-    if not args.skip_nist_check:
-        servers = (args.nist_server,) if args.nist_server else DEFAULT_SERVERS
-        try:
-            nist = query(servers)
-            print(
-                f"[ntp-enrichment] NIST: {nist.server_used} responded "
-                f"(offset={nist.offset_s:+.4f}s stratum={nist.stratum})"
-            )
-        except NistUnreachable:
-            print(NIST_HALT_WARNING, file=sys.stderr)
-            return 2
-
-    resolver_fn = lambda _i: resolve_ntp_source(df, **resolve_kwargs)  # noqa: E731
-    correction = validate_and_correct(csv_path, ctx, output_path, resolver_fn)
-
-    enriched_rows: list[dict] = []
-    if correction.result.get("output_path"):
-        try:
-            enriched_rows = pd.read_csv(
-                correction.result["output_path"], dtype=str, keep_default_na=False
-            ).to_dict("records")
-        except (FileNotFoundError, pd.errors.EmptyDataError):
-            enriched_rows = []
-
-    # On a halt the correction has no output CSV; still name the report after the
-    # requested --output path so it is discoverable next to the case.
-    result = dict(correction.result)
-    result.setdefault("output_path", str(output_path))
-    report = ntp_manifest.emit(
-        correction.final_context,
-        enriched_rows,
-        result,
-        output_dir,
-        unresolved_rows=correction.unresolved,
-        nist=nist,
-        cli_args=vars(args),
-    )
-    print(f"[ntp-enrichment] accuracy report: {report}")
-
-    if correction.unresolved:
-        print(
-            f"[ntp-enrichment] HALT after {correction.iterations} iteration(s): "
-            f"{len(correction.unresolved)} unresolved row(s) (SPEC §4 Phase 3).",
-            file=sys.stderr,
+    with SiftSession("ntp-enrichment", case_dir=args.case_dir, input=args.input) as sess:
+        sess.log(
+            "tool_called",
+            tool_name="ntp_enricher.py",
+            tool_input=vars(args),
+            reasoning="Parsing CLI arguments to determine NTP enrichment configuration.",
         )
-        return 3
 
-    print(
-        f"[ntp-enrichment] done: {correction.result.get('rows_processed', 0)} rows, "
-        f"source={correction.final_context.ntp_source}, "
-        f"assumption={correction.final_context.ntp_assumption}, "
-        f"rank={int(correction.final_context.confidence_rank)}"
-    )
-    return 0
+        df = pd.read_csv(csv_path, dtype=str, keep_default_na=False)
+        ctx = resolve_ntp_source(df, **resolve_kwargs)
+        sess.log(
+            "ntp_resolution",
+            ntp_source=ctx.ntp_source or "",
+            confidence_rank=int(ctx.confidence_rank) if ctx.ntp_source else None,
+            assumption=ctx.ntp_assumption,
+            files_accessed=[args.input],
+            reasoning="Phase 2: resolving NTP source from artifact logs and CLI hints (SPEC §4 Phase 2).",
+        )
+
+        # --skip-ntp: pass through, emit manifest, done.
+        if args.skip_ntp or not ctx.ntp_source:
+            sess.log(
+                "skip_ntp_warning",
+                warning=SKIP_NTP_CHAIN_OF_CUSTODY_WARNING,
+                reasoning="--skip-ntp flag set or no NTP source resolved; bypassing enrichment per analyst instruction.",
+            )
+            result = enrich(csv_path, NTPContext(), output_path)
+            report = ntp_manifest.emit(ctx, [], result, output_dir, cli_args=vars(args))
+            print(f"[ntp-enrichment] accuracy report: {report}")
+            sess.set_exit_code(0)
+            return 0
+
+        # NIST validation query (fail closed on total unreachability — SPEC §3.2).
+        nist = None
+        if not args.skip_nist_check:
+            servers = (args.nist_server,) if args.nist_server else DEFAULT_SERVERS
+            try:
+                nist = query(servers)
+                print(
+                    f"[ntp-enrichment] NIST: {nist.server_used} responded "
+                    f"(offset={nist.offset_s:+.4f}s stratum={nist.stratum})"
+                )
+                sess.log(
+                    "nist_query",
+                    server=nist.server_used,
+                    offset_s=nist.offset_s,
+                    stratum=nist.stratum,
+                    reachable=True,
+                    reasoning="Validating resolved NTP source against NIST reference per SPEC §3.2.",
+                )
+            except NistUnreachable:
+                sess.log(
+                    "nist_query",
+                    reachable=False,
+                    is_error=True,
+                    message=NIST_HALT_WARNING,
+                    reasoning="All NIST servers unreachable; halting per SPEC §3.2 fail-closed policy.",
+                )
+                print(NIST_HALT_WARNING, file=sys.stderr)
+                sess.set_exit_code(2)
+                return 2
+
+        resolver_fn = lambda _i: resolve_ntp_source(df, **resolve_kwargs)  # noqa: E731
+        correction = validate_and_correct(csv_path, ctx, output_path, resolver_fn)
+
+        if correction.result:
+            sess.log(
+                "evidence_integrity",
+                path=args.input,
+                sha256_before=correction.result.get("source_hash_before", ""),
+                sha256_after=correction.result.get("source_hash_after", ""),
+                ok=correction.result.get("integrity_ok", True),
+                files_accessed=[args.input],
+                reasoning="Verifying source CSV was not modified during enrichment (chain of custody).",
+            )
+
+        enriched_rows: list[dict] = []
+        if correction.result.get("output_path"):
+            try:
+                enriched_rows = pd.read_csv(
+                    correction.result["output_path"], dtype=str, keep_default_na=False
+                ).to_dict("records")
+            except (FileNotFoundError, pd.errors.EmptyDataError):
+                enriched_rows = []
+
+        # On a halt the correction has no output CSV; still name the report after the
+        # requested --output path so it is discoverable next to the case.
+        result = dict(correction.result)
+        result.setdefault("output_path", str(output_path))
+        report = ntp_manifest.emit(
+            correction.final_context,
+            enriched_rows,
+            result,
+            output_dir,
+            unresolved_rows=correction.unresolved,
+            nist=nist,
+            cli_args=vars(args),
+        )
+        print(f"[ntp-enrichment] accuracy report: {report}")
+
+        if correction.unresolved:
+            sess.log(
+                "enrichment_halted",
+                iterations=correction.iterations,
+                unresolved_count=len(correction.unresolved),
+                is_error=True,
+                reasoning=(
+                    f"Phase 3 self-correction exhausted {correction.iterations} iteration(s) "
+                    f"with {len(correction.unresolved)} rows still outside "
+                    f"±1000s plausibility bound (SPEC §4 Phase 3)."
+                ),
+            )
+            print(
+                f"[ntp-enrichment] HALT after {correction.iterations} iteration(s): "
+                f"{len(correction.unresolved)} unresolved row(s) (SPEC §4 Phase 3).",
+                file=sys.stderr,
+            )
+            sess.set_exit_code(3)
+            return 3
+
+        sess.log(
+            "enrichment_complete",
+            rows_processed=correction.result.get("rows_processed", 0),
+            ntp_source=correction.final_context.ntp_source,
+            assumption=correction.final_context.ntp_assumption,
+            rank=int(correction.final_context.confidence_rank),
+            output_path=correction.result.get("output_path", ""),
+            files_accessed=[args.input],
+            reasoning="Enrichment complete; all rows within ±1000s plausibility bound.",
+        )
+        print(
+            f"[ntp-enrichment] done: {correction.result.get('rows_processed', 0)} rows, "
+            f"source={correction.final_context.ntp_source}, "
+            f"assumption={correction.final_context.ntp_assumption}, "
+            f"rank={int(correction.final_context.confidence_rank)}"
+        )
+        sess.set_exit_code(0)
+        return 0
 
 
 if __name__ == "__main__":
