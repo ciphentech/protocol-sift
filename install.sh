@@ -3,7 +3,7 @@
 # Usage: curl -fsSL https://raw.githubusercontent.com/teamdfir/protocol-sift/main/install.sh | bash
 set -euo pipefail
 
-REPO_URL="https://github.com/teamdfir/protocol-sift.git"
+REPO_URL="https://github.com/ciphentech/protocol-sift.git"
 CLAUDE_DIR="${HOME}/.claude"
 TMPDIR_PREFIX="protocol-sift-install"
 
@@ -54,7 +54,7 @@ echo
 
 # ── locate repo files ─────────────────────────────────────────────────────────
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
 
 if [[ -f "$SCRIPT_DIR/global/CLAUDE.md" && -f "$SCRIPT_DIR/global/settings.json" ]]; then
     info "Running from local repo/archive — skipping clone."
@@ -121,7 +121,7 @@ echo
 info "Installing analysis scripts…"
 mkdir -p "$CLAUDE_DIR/analysis-scripts"
 
-for script in generate_pdf_report.py ntp_resolver.py ntp_enricher.py ntp_nist_client.py ntp_manifest.py; do
+for script in generate_pdf_report.py ntp_resolver.py ntp_enricher.py ntp_nist_client.py ntp_manifest.py sift_logger.py; do
     src="$REPO_DIR/analysis-scripts/$script"
     if [[ -f "$src" ]]; then
         cp "$src" "$CLAUDE_DIR/analysis-scripts/$script"
@@ -153,7 +153,7 @@ REQ="$REPO_DIR/requirements.txt"
 if [[ -f "$REQ" ]]; then
     info "Installing NTP enrichment Python dependencies…"
     if pip3 install -r "$REQ" --quiet; then
-        ok "Python dependencies installed (pytest, pandas, ntplib)."
+        ok "Python dependencies installed (pytest, pandas, ntplib, boto3)."
     else
         warn "pip3 install failed. Install manually:"
         warn "  pip3 install -r requirements.txt"
@@ -212,12 +212,33 @@ echo
 echo "  Start a new case:"
 echo
 echo "    export CASE=CLIENT-IR-2025-001"
-echo "    mkdir -p /cases/\${CASE}/{analysis,exports,reports}"
+echo "    mkdir -p /cases/\${CASE}/{analysis,exports,reports,logs}"
 echo "    cp \${HOME}/.claude/case-templates/CLAUDE.md /cases/\${CASE}/CLAUDE.md"
 echo "    cp \${HOME}/.claude/analysis-scripts/generate_pdf_report.py \\"
 echo "       /cases/\${CASE}/analysis/"
 echo "    nano /cases/\${CASE}/CLAUDE.md   # fill in case details"
 echo "    cd /cases/\${CASE} && claude"
+echo
+echo "── Audit logging (skill-level JSONL) ─────────────────────────────────────"
+echo
+echo "  Local-only mode (default — no config required):"
+echo "    Logs written to ./logs/<session_id>.jsonl"
+echo "    Audit summary:  ./analysis/<session_id>_forensic_audit.log"
+echo
+echo "  S3 mode (optional — set these before launching claude):"
+echo "    export SIFT_S3_BUCKET=agent_logs_sift   # your bucket name"
+echo "    export SIFT_S3_REGION=us-west-2          # AWS region"
+echo "    export SIFT_S3_PREFIX=sift-logs          # key prefix (optional)"
+echo
+echo "  AWS credentials for S3 follow the default boto3 chain:"
+echo "    env vars (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)"
+echo "    → ~/.aws/credentials"
+echo "    → EC2 instance profile"
+echo
+echo "  Model attribution (recorded in every session_init event):"
+echo "    export SIFT_AGENT_MODEL=claude-sonnet-4-6"
+echo
+echo "──────────────────────────────────────────────────────────────────────────"
 echo
 echo "  Customise the case template before use — it ships with SRL FOR508 demo data."
 echo
