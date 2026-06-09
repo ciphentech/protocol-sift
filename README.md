@@ -194,23 +194,6 @@ gotchas, and output interpretation guidance for a specific forensic toolset.
 | `windows-artifacts/SKILL.md` | Windows artifacts | EZ Tools suite, EvtxECmd, MFTECmd, RECmd, AmcacheParser |
 | `yara-hunting/SKILL.md` | Threat hunting | YARA rules, IOC sweeps, bulk scanning |
 
-**Install:**
-```bash
-mkdir -p ~/.claude/skills/memory-analysis \
-         ~/.claude/skills/plaso-timeline \
-         ~/.claude/skills/ntp-enrichment \
-         ~/.claude/skills/sleuthkit \
-         ~/.claude/skills/windows-artifacts \
-         ~/.claude/skills/yara-hunting
-
-cp skills/memory-analysis/SKILL.md   ~/.claude/skills/memory-analysis/SKILL.md
-cp skills/plaso-timeline/SKILL.md    ~/.claude/skills/plaso-timeline/SKILL.md
-cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
-cp skills/sleuthkit/SKILL.md         ~/.claude/skills/sleuthkit/SKILL.md
-cp skills/windows-artifacts/SKILL.md ~/.claude/skills/windows-artifacts/SKILL.md
-cp skills/yara-hunting/SKILL.md      ~/.claude/skills/yara-hunting/SKILL.md
-```
-
 **How Claude uses them:** The global `CLAUDE.md` contains a routing table that
 tells Claude which skill file to consult before using each tool category. Claude
 reads the skill file at task time — you do not need to invoke them manually.
@@ -315,75 +298,9 @@ and `\S` escape sequences.
 | `ntp_manifest.py` | Writes the manifest JSON the agent reads to decide whether to accept the result or self-correct (`rubric_pass`, `rubric_failures`, `suggested_corrective_action`). |
 | `ntp_nist_client.py` | Queries the NIST time service to validate the NTP source and derive a clock offset. Requires `NIST_API_KEY` for production use. |
 
-**Install** (handled automatically by `install.sh`):
-```bash
-cp analysis-scripts/ntp_resolver.py    ~/.claude/analysis-scripts/ntp_resolver.py
-cp analysis-scripts/ntp_enricher.py    ~/.claude/analysis-scripts/ntp_enricher.py
-cp analysis-scripts/ntp_manifest.py    ~/.claude/analysis-scripts/ntp_manifest.py
-cp analysis-scripts/ntp_nist_client.py ~/.claude/analysis-scripts/ntp_nist_client.py
-pip3 install -r requirements.txt
-```
+**Install** (handled automatically by `install.sh`). Run `bash install.sh` from the repo root.
 
-**NIST API key** — required for NIST-anchored output:
-```bash
-export NIST_API_KEY="your-key-here"   # add to ~/.bashrc for persistence
-```
-Obtain a key at [nvd.nist.gov/developers/api-key-requested](https://nvd.nist.gov/developers/api-key-requested). Without it the agent will halt and warn before any timestamp computation begins.
-
----
-
-## Manual Install Script (copy-paste)
-
-If you prefer not to run `install.sh` directly, copy-paste the following from the
-root of your cloned repo or extracted archive. This is exactly what `install.sh`
-does, without the backup logic or prompts.
-
-```bash
-#!/bin/bash
-set -e
-
-# 1. Global config
-mkdir -p ~/.claude
-cp global/CLAUDE.md ~/.claude/CLAUDE.md
-cp global/settings.json ~/.claude/settings.json
-cp global/settings.local.json ~/.claude/settings.local.json
-
-# 2. Skills
-mkdir -p ~/.claude/skills/memory-analysis \
-         ~/.claude/skills/plaso-timeline \
-         ~/.claude/skills/ntp-enrichment \
-         ~/.claude/skills/sleuthkit \
-         ~/.claude/skills/windows-artifacts \
-         ~/.claude/skills/yara-hunting
-
-cp skills/memory-analysis/SKILL.md   ~/.claude/skills/memory-analysis/SKILL.md
-cp skills/plaso-timeline/SKILL.md    ~/.claude/skills/plaso-timeline/SKILL.md
-cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
-cp skills/sleuthkit/SKILL.md         ~/.claude/skills/sleuthkit/SKILL.md
-cp skills/windows-artifacts/SKILL.md ~/.claude/skills/windows-artifacts/SKILL.md
-cp skills/yara-hunting/SKILL.md      ~/.claude/skills/yara-hunting/SKILL.md
-
-# 3. Case template and analysis scripts (reusable across cases)
-mkdir -p ~/.claude/case-templates ~/.claude/analysis-scripts
-cp case-templates/CLAUDE.md ~/.claude/case-templates/CLAUDE.md
-cp analysis-scripts/generate_pdf_report.py ~/.claude/analysis-scripts/generate_pdf_report.py
-cp analysis-scripts/ntp_resolver.py        ~/.claude/analysis-scripts/ntp_resolver.py
-cp analysis-scripts/ntp_enricher.py        ~/.claude/analysis-scripts/ntp_enricher.py
-cp analysis-scripts/ntp_manifest.py        ~/.claude/analysis-scripts/ntp_manifest.py
-cp analysis-scripts/ntp_nist_client.py     ~/.claude/analysis-scripts/ntp_nist_client.py
-
-# 4. Python dependencies (NTP enrichment + PDF reports)
-pip3 install -r requirements.txt
-pip3 install weasyprint
-
-echo "Done. Start a new case with:"
-echo "  export CASE=CLIENT-IR-2025-001"
-echo "  mkdir -p /cases/\${CASE}/{analysis,exports,reports}"
-echo "  cp ~/.claude/case-templates/CLAUDE.md /cases/\${CASE}/CLAUDE.md"
-echo "  cp ~/.claude/analysis-scripts/generate_pdf_report.py /cases/\${CASE}/analysis/"
-echo "  nano /cases/\${CASE}/CLAUDE.md"
-echo "  cd /cases/\${CASE} && claude"
-```
+**NIST API key** — optional, but omitting it means the enrichment falls back to standard NTP rather than the secured sNTP variant. This is discouraged — NTP is an insecure protocol and should only be used in non-production environments. To work with the NIST NTP API key, review the NIST directions and update the ntp-enrichment skill accordingly, and make sure it knows how you have securely managed your API key. Obtain a key at [nvd.nist.gov/developers/api-key-requested](https://nvd.nist.gov/developers/api-key-requested).
 
 ---
 
