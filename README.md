@@ -333,24 +333,7 @@ Without a key the enrichment falls back to standard NTP, which is an insecure pr
 2. Register with your work email — keys are tied to an identity for accountability
 3. You will receive the key by email; treat it like a password
 
-**Storing the key securely on the SIFT workstation:**
-```bash
-# 1. Add to your personal shell profile — never to a shared or repo file
-echo 'export NIST_API_KEY="your-key-here"' >> ~/.bashrc
-
-# 2. Restrict the file so only your user can read it
-chmod 600 ~/.bashrc
-
-# 3. Apply immediately in the current session
-source ~/.bashrc
-```
-
-> **Security rules:**
-> - Never hardcode the key in a script or config file inside a case directory
-> - Never commit it to git — add `*.env` and `secrets.*` to `.gitignore`
-> - Never share it in Slack, email, or case documentation
-> - If the key is exposed, revoke it immediately at nvd.nist.gov and request a new one
-> - On shared SIFT workstations, store the key in your user's `~/.bashrc` only — not in `/etc/environment` or any system-wide profile
+To work with the NIST NTP API key, review the NIST directions and update the ntp-enrichment skill accordingly, and make sure it knows how you have securely managed your API key.
 
 ---
 
