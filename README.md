@@ -23,7 +23,7 @@ rules, forensic tool skill files, per-case project templates, and PDF report too
 | Python 3.10+ | Built into the SIFT image; verify with `python3 --version` |
 | Python dependencies | `pip3 install -r requirements.txt` — installs `pytest`, `pandas`, `ntplib` for NTP enrichment |
 | WeasyPrint | `pip3 install weasyprint` — required for PDF report generation only |
-| NIST API key | Required for NIST-anchored NTP enrichment; obtain at [nvd.nist.gov/developers/api-key-requested](https://nvd.nist.gov/developers/api-key-requested) and set `export NIST_API_KEY="..."` in your shell |
+| NIST API key | **Optional**, but omitting it means the enrichment falls back to standard NTP rather than the secured sNTP variant. This is discouraged — NTP is an insecure protocol and should only be used in non-production environments. Obtain a key at [nvd.nist.gov/developers/api-key-requested](https://nvd.nist.gov/developers/api-key-requested). See [NIST API Key](#nist-api-key) below for secure setup. |
 | dotnet runtime v6 | Pre-installed on SIFT; EZ Tools run against `/opt/zimmermantools/` |
 
 ---
@@ -324,66 +324,33 @@ cp analysis-scripts/ntp_nist_client.py ~/.claude/analysis-scripts/ntp_nist_clien
 pip3 install -r requirements.txt
 ```
 
-**NIST API key** — required for NIST-anchored output:
+**NIST API key** — optional, but strongly recommended {#nist-api-key}
+
+Without a key the enrichment falls back to standard NTP, which is an insecure protocol subject to spoofing and man-in-the-middle attacks. Use of plain NTP is **discouraged in production or legal proceedings** and should be limited to lab or non-production environments. With a key, the tooling uses the secured sNTP variant anchored to NIST time services.
+
+**Obtaining a key:**
+1. Visit [nvd.nist.gov/developers/api-key-requested](https://nvd.nist.gov/developers/api-key-requested)
+2. Register with your work email — keys are tied to an identity for accountability
+3. You will receive the key by email; treat it like a password
+
+**Storing the key securely on the SIFT workstation:**
 ```bash
-export NIST_API_KEY="your-key-here"   # add to ~/.bashrc for persistence
+# 1. Add to your personal shell profile — never to a shared or repo file
+echo 'export NIST_API_KEY="your-key-here"' >> ~/.bashrc
+
+# 2. Restrict the file so only your user can read it
+chmod 600 ~/.bashrc
+
+# 3. Apply immediately in the current session
+source ~/.bashrc
 ```
-Obtain a key at [nvd.nist.gov/developers/api-key-requested](https://nvd.nist.gov/developers/api-key-requested). Without it the agent will halt and warn before any timestamp computation begins.
 
----
-
-## Manual Install Script (copy-paste)
-
-If you prefer not to run `install.sh` directly, copy-paste the following from the
-root of your cloned repo or extracted archive. This is exactly what `install.sh`
-does, without the backup logic or prompts.
-
-```bash
-#!/bin/bash
-set -e
-
-# 1. Global config
-mkdir -p ~/.claude
-cp global/CLAUDE.md ~/.claude/CLAUDE.md
-cp global/settings.json ~/.claude/settings.json
-cp global/settings.local.json ~/.claude/settings.local.json
-
-# 2. Skills
-mkdir -p ~/.claude/skills/memory-analysis \
-         ~/.claude/skills/plaso-timeline \
-         ~/.claude/skills/ntp-enrichment \
-         ~/.claude/skills/sleuthkit \
-         ~/.claude/skills/windows-artifacts \
-         ~/.claude/skills/yara-hunting
-
-cp skills/memory-analysis/SKILL.md   ~/.claude/skills/memory-analysis/SKILL.md
-cp skills/plaso-timeline/SKILL.md    ~/.claude/skills/plaso-timeline/SKILL.md
-cp skills/ntp-enrichment/SKILL.md    ~/.claude/skills/ntp-enrichment/SKILL.md
-cp skills/sleuthkit/SKILL.md         ~/.claude/skills/sleuthkit/SKILL.md
-cp skills/windows-artifacts/SKILL.md ~/.claude/skills/windows-artifacts/SKILL.md
-cp skills/yara-hunting/SKILL.md      ~/.claude/skills/yara-hunting/SKILL.md
-
-# 3. Case template and analysis scripts (reusable across cases)
-mkdir -p ~/.claude/case-templates ~/.claude/analysis-scripts
-cp case-templates/CLAUDE.md ~/.claude/case-templates/CLAUDE.md
-cp analysis-scripts/generate_pdf_report.py ~/.claude/analysis-scripts/generate_pdf_report.py
-cp analysis-scripts/ntp_resolver.py        ~/.claude/analysis-scripts/ntp_resolver.py
-cp analysis-scripts/ntp_enricher.py        ~/.claude/analysis-scripts/ntp_enricher.py
-cp analysis-scripts/ntp_manifest.py        ~/.claude/analysis-scripts/ntp_manifest.py
-cp analysis-scripts/ntp_nist_client.py     ~/.claude/analysis-scripts/ntp_nist_client.py
-
-# 4. Python dependencies (NTP enrichment + PDF reports)
-pip3 install -r requirements.txt
-pip3 install weasyprint
-
-echo "Done. Start a new case with:"
-echo "  export CASE=CLIENT-IR-2025-001"
-echo "  mkdir -p /cases/\${CASE}/{analysis,exports,reports}"
-echo "  cp ~/.claude/case-templates/CLAUDE.md /cases/\${CASE}/CLAUDE.md"
-echo "  cp ~/.claude/analysis-scripts/generate_pdf_report.py /cases/\${CASE}/analysis/"
-echo "  nano /cases/\${CASE}/CLAUDE.md"
-echo "  cd /cases/\${CASE} && claude"
-```
+> **Security rules:**
+> - Never hardcode the key in a script or config file inside a case directory
+> - Never commit it to git — add `*.env` and `secrets.*` to `.gitignore`
+> - Never share it in Slack, email, or case documentation
+> - If the key is exposed, revoke it immediately at nvd.nist.gov and request a new one
+> - On shared SIFT workstations, store the key in your user's `~/.bashrc` only — not in `/etc/environment` or any system-wide profile
 
 ---
 
