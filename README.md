@@ -484,11 +484,13 @@ overwritten.
 
 **Local-only mode (default — no configuration required)**
 
-Logs are written to the case working directory. No env vars needed, no network
-access, no boto3 calls.
+Logs are written to `~/.protocol-sift/` — the same directory used by the
+agent-level hook (`log_agent_trace.py`). No env vars needed, no network access,
+no boto3 calls.
 
 ```
-./logs/<session_id>.jsonl
+~/.protocol-sift/<session_id>.jsonl
+~/.protocol-sift/agent_trace.jsonl        ← agent-level hook (Layer 1)
 ./analysis/<session_id>_forensic_audit.log
 ```
 
@@ -556,26 +558,27 @@ The script is installed to `~/.claude/analysis-scripts/sift_s3_sync.py` by
 `install.sh`. Set up the cron job once per case (or per workstation if you
 want to sync across all cases):
 
-```bash
-crontab -e
-```
-
-Add one line per active case directory. The recommended interval is every
-15 minutes — adjust to suit your operational tempo:
-
-```
-# Protocol SIFT — S3 audit log sync (every 15 minutes)
-*/15 * * * * SIFT_S3_BUCKET=agent_logs_sift SIFT_S3_REGION=us-west-2 SIFT_S3_PREFIX=sift-logs \
-    python3 ~/.claude/analysis-scripts/sift_s3_sync.py \
-    --logs-dir /cases/CLIENT-IR-2025-001/logs >> ~/sift-s3-sync.log 2>&1
-```
-
-To verify the cron job works before committing to the schedule, run it manually first:
+The cron job is **installed automatically by `install.sh`**. You do not need to
+add it manually. After running the installer, verify it is active:
 
 ```bash
-SIFT_S3_BUCKET=agent_logs_sift SIFT_S3_REGION=us-west-2 \
-    python3 ~/.claude/analysis-scripts/sift_s3_sync.py \
-    --logs-dir /cases/CLIENT-IR-2025-001/logs --dry-run
+crontab -l | grep sift_s3_sync
+```
+
+The installed entry runs every 15 minutes and syncs `~/.protocol-sift/` to S3:
+
+```
+*/15 * * * * . "$HOME/.claude/sift.env" 2>/dev/null; \
+    python3 "$HOME/.claude/analysis-scripts/sift_s3_sync.py" \
+    --logs-dir "$HOME/.protocol-sift" >> "$HOME/sift-s3-sync.log" 2>&1
+```
+
+Cron output is appended to `~/sift-s3-sync.log`. To verify the sync works before
+the next scheduled run:
+
+```bash
+source ~/.claude/sift.env
+python3 ~/.claude/analysis-scripts/sift_s3_sync.py --dry-run
 ```
 
 The `--dry-run` flag lists what would be uploaded without touching S3.
