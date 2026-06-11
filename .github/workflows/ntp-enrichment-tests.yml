@@ -1,21 +1,25 @@
-name: ntp-enrichment-tests
+name: protocol-sift-smoke
 
 on:
   push:
     paths:
       - 'analysis-scripts/**'
+      - 'global/hooks/**'
+      - 'skills/**'
       - 'requirements.txt'
       - '.github/workflows/**'
   pull_request:
     paths:
       - 'analysis-scripts/**'
+      - 'global/hooks/**'
+      - 'skills/**'
       - 'requirements.txt'
 
 permissions:
   contents: read
 
 jobs:
-  test:
+  smoke:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

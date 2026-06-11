@@ -21,8 +21,8 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-PROJECTS_DIR = Path.home() / ".claude" / "projects"
-ANALYSIS_DIR = Path("./analysis")
+PROJECTS_DIR = Path(os.environ["SIFT_PROJECTS_DIR"]) if os.environ.get("SIFT_PROJECTS_DIR") else Path.home() / ".claude" / "projects"
+ANALYSIS_DIR = Path(os.environ["SIFT_ANALYSIS_DIR"]) if os.environ.get("SIFT_ANALYSIS_DIR") else Path("./analysis")
 
 # USD per 1M tokens — update when Anthropic publishes revised rates
 _PRICING: dict[str, dict[str, float]] = {
