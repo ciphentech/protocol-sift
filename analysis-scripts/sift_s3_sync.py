@@ -34,15 +34,22 @@ from pathlib import Path
 SIFT_S3_BUCKET = os.environ.get("SIFT_S3_BUCKET", "")
 SIFT_S3_REGION = os.environ.get("SIFT_S3_REGION", "us-west-2")
 SIFT_S3_PREFIX = os.environ.get("SIFT_S3_PREFIX", "sift-logs")
+DEFAULT_LOGS_DIR = Path.home() / ".protocol-sift"
 
 
 def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
-def _s3_key(session_id: str) -> str:
-    # session_id format: SIFT-YYYY-MM-DD-<hex>
-    date_str = session_id[5:15] if len(session_id) >= 15 else "unknown"
+def _s3_key(session_id: str, path: Path = None) -> str:
+    # session_id format: SIFT-YYYY-MM-DD-<hex>; fall back to file mtime for other names
+    if len(session_id) >= 15 and session_id[4:5] == "-" and session_id[12:13] == "-":
+        date_str = session_id[5:15]
+    elif path is not None:
+        mtime = datetime.fromtimestamp(path.stat().st_mtime, tz=timezone.utc)
+        date_str = mtime.strftime("%Y-%m-%d")
+    else:
+        date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
     return f"{SIFT_S3_PREFIX}/{date_str}/{session_id}/events.jsonl"
 
 
@@ -73,7 +80,7 @@ def sync(logs_dir: Path, dry_run: bool = False) -> int:
 
     for path in files:
         session_id = path.stem
-        key = _s3_key(session_id)
+        key = _s3_key(session_id, path)
 
         try:
             local_md5 = _md5(path)
@@ -123,8 +130,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--logs-dir",
-        default="./logs",
-        help="Path to the logs directory (default: ./logs)",
+        default=str(DEFAULT_LOGS_DIR),
+        help=f"Path to the logs directory (default: {DEFAULT_LOGS_DIR})",
     )
     parser.add_argument(
         "--dry-run",

@@ -163,6 +163,36 @@ else
 fi
 echo
 
+# ── sift.env (vars file for S3 sync) ─────────────────────────────────────────
+
+SIFT_ENV_DST="$CLAUDE_DIR/sift.env"
+SIFT_ENV_TMPL="$REPO_DIR/sift.env.template"
+
+if [[ -f "$SIFT_ENV_DST" ]]; then
+    info "sift.env already present at $SIFT_ENV_DST — skipping."
+elif [[ -f "$SIFT_ENV_TMPL" ]]; then
+    cp "$SIFT_ENV_TMPL" "$SIFT_ENV_DST"
+    ok "  sift.env.template → $SIFT_ENV_DST  (edit SIFT_S3_BUCKET / credentials before use)"
+else
+    warn "  sift.env.template not found — skipping. Create $SIFT_ENV_DST manually."
+fi
+echo
+
+# ── S3 sync cron job (every 15 minutes) ──────────────────────────────────────
+
+PROTOCOL_SIFT_LOGS="${HOME}/.protocol-sift"
+CRON_MARKER="sift_s3_sync.py"
+CRON_LINE="*/15 * * * * . \"${HOME}/.claude/sift.env\" 2>/dev/null; python3 \"${HOME}/.claude/analysis-scripts/sift_s3_sync.py\" --logs-dir \"${PROTOCOL_SIFT_LOGS}\" >> \"${HOME}/sift-s3-sync.log\" 2>&1"
+
+info "Configuring S3 sync cron job…"
+if crontab -l 2>/dev/null | grep -qF "$CRON_MARKER"; then
+    info "  S3 sync cron job already installed — skipping."
+else
+    ( crontab -l 2>/dev/null || true; echo "$CRON_LINE" ) | crontab -
+    ok "  Cron job added: every 15 min → syncs $PROTOCOL_SIFT_LOGS to S3"
+fi
+echo
+
 # ── case template (kept in ~/.claude for reuse) ───────────────────────────────
 
 info "Installing case template…"
@@ -221,28 +251,20 @@ echo "    cd /cases/\${CASE} && claude"
 echo
 echo "── Audit logging (skill-level JSONL) ─────────────────────────────────────"
 echo
-echo "  Local-only mode (default — no config required):"
-echo "    Logs written to ./logs/<session_id>.jsonl"
-echo "    Audit summary:  ./analysis/<session_id>_forensic_audit.log"
+echo "  Logs are written to: \${HOME}/.protocol-sift/"
+echo "  Agent trace:         \${HOME}/.protocol-sift/agent_trace.jsonl"
+echo "  Skill session logs:  \${HOME}/.protocol-sift/<session_id>.jsonl"
 echo
-echo "  S3 mode (optional — requires an S3 bucket + IAM permissions):"
-echo "    See README.md §Audit Logging for IAM policy and bucket setup."
+echo "  S3 sync cron job was installed automatically (every 15 minutes)."
+echo "  Cron log:  \${HOME}/sift-s3-sync.log"
+echo "  Verify:    crontab -l | grep sift_s3_sync"
 echo
-echo "  Configure your S3 vars (edit sift.env in the repo root, then source it):"
-echo "    nano /path/to/protocol-sift/sift.env"
-echo "    source /path/to/protocol-sift/sift.env"
+echo "  Edit S3 vars before the cron runs:"
+echo "    nano \${HOME}/.claude/sift.env"
 echo
-echo "  Set up the cron job to sync logs to S3 every 15 minutes:"
-echo "    crontab -e"
-echo "    # Add (replace paths as needed):"
-echo "    */15 * * * * source /path/to/protocol-sift/sift.env && \\"
-echo "        python3 \${HOME}/.claude/analysis-scripts/sift_s3_sync.py \\"
-echo "        --logs-dir /cases/<CASENAME>/logs >> ~/sift-s3-sync.log 2>&1"
-echo
-echo "  Test the sync without uploading:"
-echo "    source /path/to/protocol-sift/sift.env"
-echo "    python3 \${HOME}/.claude/analysis-scripts/sift_s3_sync.py \\"
-echo "        --logs-dir /cases/<CASENAME>/logs --dry-run"
+echo "  Test sync without uploading:"
+echo "    source \${HOME}/.claude/sift.env"
+echo "    python3 \${HOME}/.claude/analysis-scripts/sift_s3_sync.py --dry-run"
 echo
 echo "  Model attribution (recorded in every session_init event):"
 echo "    export SIFT_AGENT_MODEL=claude-sonnet-4-6"
