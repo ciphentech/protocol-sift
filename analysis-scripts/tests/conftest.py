@@ -24,5 +24,10 @@ def implausible_csv_path():
 
 
 @pytest.fixture
+def spoliation_csv_path():
+    return FIXTURES / "ntp_spoliation.csv"
+
+
+@pytest.fixture
 def ground_truth():
     return json.loads((FIXTURES / "expected_ntp_ground_truth.json").read_text())
