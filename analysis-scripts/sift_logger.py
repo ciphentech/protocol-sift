@@ -37,7 +37,7 @@ SIFT_S3_REGION = os.environ.get("SIFT_S3_REGION", "us-west-2")
 SIFT_S3_PREFIX = os.environ.get("SIFT_S3_PREFIX", "sift-logs")
 SIFT_AGENT_MODEL = os.environ.get("SIFT_AGENT_MODEL", "claude-sonnet-4-6")
 
-LOGS_DIR = Path(os.environ["SIFT_LOGS_DIR"]) if os.environ.get("SIFT_LOGS_DIR") else Path.home() / ".protocol-sift"
+LOGS_DIR = Path.home() / ".protocol-sift"
 
 try:
     _OS_USER = getpass.getuser()
