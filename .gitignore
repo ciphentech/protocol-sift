@@ -6,3 +6,7 @@ __pycache__/
 # Machine-local environment vars (may contain credentials)
 sift.env
 *.env
+
+# Run-time output dirs created by the enricher/logger
+analysis/
+logs/
