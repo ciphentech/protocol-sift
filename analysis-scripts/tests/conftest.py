@@ -11,8 +11,10 @@ FIXTURES = Path(__file__).parent / "fixtures"
 @pytest.fixture(autouse=True)
 def _isolated_logs_dir(tmp_path, monkeypatch):
     """Keep test session logs out of the real ~/.protocol-sift logs dir."""
-    import sift_logger
-
+    try:
+        import sift_logger
+    except ImportError:  # not built yet (P-01..P-05 stages of the series)
+        return
     monkeypatch.setattr(sift_logger, "LOGS_DIR", tmp_path / "logs")
 
 
