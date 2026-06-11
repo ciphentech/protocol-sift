@@ -1,24 +1,27 @@
 """Unit tests for the forensic execution-log schema (Hackathon #8, SPEC §7 #8).
 
 Drives the real CLI (main()) so SiftSession emits exactly what a case run
-emits. Each test chdirs into tmp_path because sift_logger writes to ./logs/
-and ./analysis/ relative to the working directory.
+emits. Each test chdirs into tmp_path (the audit log goes to ./analysis/
+relative to the working directory) and repoints sift_logger.LOGS_DIR
+(~/.protocol-sift in production) into tmp_path so runs stay isolated.
 """
 
 import json
 from datetime import datetime
 from pathlib import Path
 
+import sift_logger
 from ntp_enricher import main
 
 
 def _run(csv_path, tmp_path, monkeypatch, extra_args=()):
     """Run the CLI from tmp_path; return (rc, jsonl events, tmp_path)."""
     monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sift_logger, "LOGS_DIR", tmp_path / "logs")
     out = tmp_path / "exports" / "out.csv"
     rc = main(["--input", str(csv_path), "--output", str(out),
                "--skip-nist-check", "--non-interactive", *extra_args])
-    logs = sorted(Path("logs").glob("SIFT-*.jsonl"))
+    logs = sorted((tmp_path / "logs").glob("SIFT-*.jsonl"))
     assert len(logs) == 1, "exactly one session log expected per run"
     events = [json.loads(line) for line in logs[0].read_text().splitlines()]
     return rc, events, logs[0]

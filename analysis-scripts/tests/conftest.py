@@ -8,6 +8,14 @@ import pytest
 FIXTURES = Path(__file__).parent / "fixtures"
 
 
+@pytest.fixture(autouse=True)
+def _isolated_logs_dir(tmp_path, monkeypatch):
+    """Keep test session logs out of the real ~/.protocol-sift logs dir."""
+    import sift_logger
+
+    monkeypatch.setattr(sift_logger, "LOGS_DIR", tmp_path / "logs")
+
+
 @pytest.fixture
 def mini_csv_path():
     return FIXTURES / "ntp_mini.csv"
