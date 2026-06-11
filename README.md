@@ -365,6 +365,79 @@ claude
 
 ---
 
+## How to Use Claude SIFT Workstation Prompts
+
+Once `claude` is launched from the case directory, you interact with it using natural
+language prompts. Claude reads the global `CLAUDE.md` and the per-case `CLAUDE.md`
+automatically — you do not need to tell it which skill to use. It consults the appropriate
+skill file based on the task.
+
+### Available Skills
+
+| Skill | What it does | Example trigger phrase |
+|-------|-------------|----------------------|
+| `plaso-timeline` | Builds super-timelines with log2timeline, filters with psort | "Build a super-timeline from the disk image" |
+| `ntp-enrichment` | Normalises timestamps against NIST-anchored NTP source; enriches psort CSV | "Enrich the timeline CSV with NTP-corrected timestamps" |
+| `memory-analysis` | Volatility 3 memory forensics — processes, network, injected code | "Run memory analysis on the RAM capture" |
+| `sleuthkit` | Filesystem forensics — file listing, carving, deleted file recovery | "List all deleted files in the NTFS partition" |
+| `windows-artifacts` | EZ Tools suite — MFT, Event Logs, Registry, Prefetch, LNK, Jump Lists | "Parse the MFT and event logs for lateral movement" |
+| `yara-hunting` | YARA rule scanning, IOC sweeps across carved files or mounted image | "Sweep all executables with the threat hunting YARA rules" |
+
+### Example — Plaso Timeline with NTP Enrichment
+
+The most common investigation workflow combines the `plaso-timeline` and
+`ntp-enrichment` skills in sequence. Claude handles both automatically from a
+single prompt.
+
+**Step 1 — Generate the super-timeline**
+
+After mounting evidence and launching `claude` from the case directory, type:
+
+```
+Build a super-timeline from /mnt/rd01. Write the .plaso file to exports/ and
+filter it to exports/timeline.csv sorted by time.
+```
+
+Claude will:
+1. Run `log2timeline.py` against the mounted image
+2. Run `psort.py` to filter and export a sorted CSV
+3. Verify tool output and report any errors
+
+**Step 2 — Enrich timestamps with NTP correction**
+
+Once the CSV is ready, prompt:
+
+```
+Enrich exports/timeline.csv with NTP-corrected timestamps. The case directory
+is /cases/CLIENT-IR-2025-001. Write the enriched output to exports/.
+```
+
+Claude will:
+1. Invoke `ntp_resolver.py` to identify the NTP source from EID 35/260 events in the timeline
+2. Query the NIST time service via `ntp_nist_client.py` to validate the source and measure clock offset
+3. Run `ntp_enricher.py` to compute corrected timestamps for every row and write the enriched CSV
+4. Write a session audit log to `./logs/<session_id>.jsonl` and a human-readable summary to `./analysis/<session_id>_forensic_audit.log`
+5. Run a self-correction loop if any rows fall outside the plausibility bound
+
+**Combined one-shot prompt**
+
+You can also ask Claude to do both steps in a single prompt:
+
+```
+Build a super-timeline from /mnt/rd01, export to exports/timeline.csv, then
+enrich the timestamps using the NTP enrichment skill with NIST validation.
+Case directory is /cases/CLIENT-IR-2025-001.
+```
+
+Claude will chain the skills automatically — timeline first, enrichment second —
+and produce both `exports/timeline_enriched.csv` and the forensic audit logs.
+
+> **Tip:** If you know the NTP source already (e.g. from network logs), include it
+> in the prompt: "The system used `time.windows.com` as its NTP server." This
+> skips the auto-detection phase and is logged as a higher-confidence assumption.
+
+---
+
 ## Notes on Chain of Custody
 
 - Claude never writes to `/cases/`, `/mnt/`, or `/media/` — enforced by `settings.json`
