@@ -111,7 +111,8 @@ protocol-sift/
     ├── ntp_enricher.py                ← NTP field computation + writer  (13)
     ├── ntp_manifest.py                ← manifest JSON writer + rubric   (14)
     ├── ntp_nist_client.py             ← NIST time service client        (15)
-    └── sift_logger.py                 ← skill-level forensic audit log  (16)
+    ├── sift_logger.py                 ← skill-level forensic audit log  (16)
+    └── sift_s3_sync.py                ← cron-driven S3 log sync script  (17)
 ```
 
 ---
@@ -420,30 +421,128 @@ access, no boto3 calls.
 
 **S3 mode (opt-in)**
 
-Set the following environment variables before launching `claude` (or add them to
-`~/.bashrc` for persistence):
+#### Prerequisites
 
-```bash
-export SIFT_S3_BUCKET=agent_logs_sift   # your S3 bucket name
-export SIFT_S3_REGION=us-west-2          # AWS region
-export SIFT_S3_PREFIX=sift-logs          # key prefix (default: sift-logs)
+Before enabling S3 logging the following must be in place:
+
+| Requirement | Details |
+|-------------|---------|
+| AWS account | An active AWS account with permission to create and manage S3 buckets |
+| S3 bucket | A bucket in your chosen region (e.g. `agent_logs_sift`). Create it in the AWS Console under **S3 → Create bucket**. Keep the default "Block all public access" setting — these are audit logs, not public artifacts. Enable **versioning** on the bucket to retain overwritten objects. |
+| IAM permissions | The IAM user, role, or EC2 instance profile running the SIFT workstation needs: `s3:PutObject` and `s3:GetObject` on the bucket objects, and `s3:ListBucket` and `s3:HeadObject` on the bucket itself. See the minimal IAM policy below. |
+| boto3 installed | Included in `requirements.txt` — installed automatically by `install.sh` or `pip3 install -r requirements.txt`. |
+| AWS credentials | Configured via environment variables, `~/.aws/credentials` (`aws configure`), or an EC2 instance profile. See the credential chain below. |
+
+**Minimal IAM policy** — attach this to the IAM user or role running the SIFT workstation:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": ["s3:PutObject", "s3:GetObject", "s3:HeadObject"],
+      "Resource": "arn:aws:s3:::agent_logs_sift/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::agent_logs_sift"
+    }
+  ]
+}
 ```
 
-When `SIFT_S3_BUCKET` is set, each event is also shipped to S3 via a `PutObject`
-of the full accumulated JSONL (the object is replaced on each write, so S3 always
-has the latest coherent log):
+Replace `agent_logs_sift` with your actual bucket name.
 
+#### How logs are shipped to S3
+
+Log shipping is handled by **`sift_s3_sync.py`** — a standalone Python script that
+runs on a cron schedule. It does **not** run inline with the skill; it is a separate
+process that syncs completed log files from the local `./logs/` directory to S3
+at a configurable interval.
+
+On each cron run, `sift_s3_sync.py`:
+1. Scans the case `logs/` directory for all `.jsonl` files produced by `sift_logger.py`
+2. Computes an MD5 of each local file and compares it against the S3 object ETag
+3. Uploads only files that are new or have changed since the last sync (`PutObject`)
+4. Prints a timestamped line per upload to stdout (captured by cron to a log file)
+
+S3 object key structure:
 ```
 s3://<SIFT_S3_BUCKET>/<SIFT_S3_PREFIX>/<YYYY-MM-DD>/<session_id>/events.jsonl
 ```
 
-AWS credentials follow the standard boto3 chain:
-1. Environment variables (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`)
-2. `~/.aws/credentials`
-3. EC2 instance profile (if running on AWS)
+Example:
+```
+s3://agent_logs_sift/sift-logs/2026-06-11/SIFT-2026-06-11-a3f17c2e/events.jsonl
+```
 
-S3 shipping failures are non-fatal — a warning is printed to stderr and the skill
-continues. Local logging is unaffected.
+#### Setting up the cron job
+
+The script is installed to `~/.claude/analysis-scripts/sift_s3_sync.py` by
+`install.sh`. Set up the cron job once per case (or per workstation if you
+want to sync across all cases):
+
+```bash
+crontab -e
+```
+
+Add one line per active case directory. The recommended interval is every
+15 minutes — adjust to suit your operational tempo:
+
+```
+# Protocol SIFT — S3 audit log sync (every 15 minutes)
+*/15 * * * * SIFT_S3_BUCKET=agent_logs_sift SIFT_S3_REGION=us-west-2 SIFT_S3_PREFIX=sift-logs \
+    python3 ~/.claude/analysis-scripts/sift_s3_sync.py \
+    --logs-dir /cases/CLIENT-IR-2025-001/logs >> ~/sift-s3-sync.log 2>&1
+```
+
+To verify the cron job works before committing to the schedule, run it manually first:
+
+```bash
+SIFT_S3_BUCKET=agent_logs_sift SIFT_S3_REGION=us-west-2 \
+    python3 ~/.claude/analysis-scripts/sift_s3_sync.py \
+    --logs-dir /cases/CLIENT-IR-2025-001/logs --dry-run
+```
+
+The `--dry-run` flag lists what would be uploaded without touching S3.
+
+#### Configuration environment variables
+
+`sift.env` at the repo root is the canonical place to set these. Source it before
+launching `claude` or in each cron entry:
+
+```bash
+source /path/to/protocol-sift/sift.env
+```
+
+The file ships with the following variables pre-configured:
+
+```bash
+export SIFT_S3_BUCKET=hackasans-correlator-dev-sift-ai-logs   # S3 bucket name
+export SIFT_S3_REGION=us-west-2                                # AWS region
+export SIFT_S3_PREFIX=sift-logs                                # key prefix
+```
+
+`sift.env` is listed in `.gitignore` — it is machine-local and should never be
+committed, especially if AWS credentials are added to it. Edit the values in place
+after cloning or installing.
+
+#### AWS credential chain
+
+`sift_s3_sync.py` uses the standard boto3 credential resolution order:
+
+1. Environment variables (`AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` / `AWS_SESSION_TOKEN`)
+2. `~/.aws/credentials` (populated via `aws configure`)
+3. EC2 instance profile — if the SIFT workstation is an EC2 instance with an
+   attached IAM role, no credentials need to be stored on disk at all
+
+For EC2-hosted SIFT workstations, attaching an IAM role with the minimal policy
+above is the recommended approach.
+
+Sync errors are non-fatal — the script prints the error to stderr (captured by
+cron) and continues with remaining files. Local logging is always written
+regardless of S3 sync status.
 
 ### Model attribution
 

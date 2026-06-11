@@ -2,3 +2,7 @@ __pycache__/
 *.pyc
 .pytest_cache/
 .venv/
+
+# Machine-local environment vars (may contain credentials)
+sift.env
+*.env

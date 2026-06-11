@@ -121,7 +121,7 @@ echo
 info "Installing analysis scripts…"
 mkdir -p "$CLAUDE_DIR/analysis-scripts"
 
-for script in generate_pdf_report.py ntp_resolver.py ntp_enricher.py ntp_nist_client.py ntp_manifest.py sift_logger.py; do
+for script in generate_pdf_report.py ntp_resolver.py ntp_enricher.py ntp_nist_client.py ntp_manifest.py sift_logger.py sift_s3_sync.py; do
     src="$REPO_DIR/analysis-scripts/$script"
     if [[ -f "$src" ]]; then
         cp "$src" "$CLAUDE_DIR/analysis-scripts/$script"
@@ -225,15 +225,24 @@ echo "  Local-only mode (default — no config required):"
 echo "    Logs written to ./logs/<session_id>.jsonl"
 echo "    Audit summary:  ./analysis/<session_id>_forensic_audit.log"
 echo
-echo "  S3 mode (optional — set these before launching claude):"
-echo "    export SIFT_S3_BUCKET=agent_logs_sift   # your bucket name"
-echo "    export SIFT_S3_REGION=us-west-2          # AWS region"
-echo "    export SIFT_S3_PREFIX=sift-logs          # key prefix (optional)"
+echo "  S3 mode (optional — requires an S3 bucket + IAM permissions):"
+echo "    See README.md §Audit Logging for IAM policy and bucket setup."
 echo
-echo "  AWS credentials for S3 follow the default boto3 chain:"
-echo "    env vars (AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY)"
-echo "    → ~/.aws/credentials"
-echo "    → EC2 instance profile"
+echo "  Configure your S3 vars (edit sift.env in the repo root, then source it):"
+echo "    nano /path/to/protocol-sift/sift.env"
+echo "    source /path/to/protocol-sift/sift.env"
+echo
+echo "  Set up the cron job to sync logs to S3 every 15 minutes:"
+echo "    crontab -e"
+echo "    # Add (replace paths as needed):"
+echo "    */15 * * * * source /path/to/protocol-sift/sift.env && \\"
+echo "        python3 \${HOME}/.claude/analysis-scripts/sift_s3_sync.py \\"
+echo "        --logs-dir /cases/<CASENAME>/logs >> ~/sift-s3-sync.log 2>&1"
+echo
+echo "  Test the sync without uploading:"
+echo "    source /path/to/protocol-sift/sift.env"
+echo "    python3 \${HOME}/.claude/analysis-scripts/sift_s3_sync.py \\"
+echo "        --logs-dir /cases/<CASENAME>/logs --dry-run"
 echo
 echo "  Model attribution (recorded in every session_init event):"
 echo "    export SIFT_AGENT_MODEL=claude-sonnet-4-6"
