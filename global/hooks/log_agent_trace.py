@@ -46,7 +46,6 @@ def main() -> None:
             "session_id": payload.get("session_id", ""),
             "tool_name": payload.get("tool_name", ""),
             "tool_input": _truncate(payload.get("tool_input", {})),
-            "usage": payload.get("usage") or payload.get("token_usage") or {},
         }
         TRACE_PATH.parent.mkdir(parents=True, exist_ok=True)
         with open(TRACE_PATH, "a") as f:
