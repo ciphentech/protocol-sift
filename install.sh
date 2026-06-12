@@ -121,7 +121,7 @@ echo
 info "Installing analysis scripts…"
 mkdir -p "$CLAUDE_DIR/analysis-scripts"
 
-for script in generate_pdf_report.py ntp_resolver.py ntp_enricher.py ntp_nist_client.py ntp_manifest.py sift_logger.py sift_s3_sync.py; do
+for script in generate_pdf_report.py ntp_resolver.py ntp_enricher.py ntp_nist_client.py ntp_manifest.py sift_logger.py sift_s3_sync.py tlcorr_pipeline.sh; do
     src="$REPO_DIR/analysis-scripts/$script"
     if [[ -f "$src" ]]; then
         cp "$src" "$CLAUDE_DIR/analysis-scripts/$script"
