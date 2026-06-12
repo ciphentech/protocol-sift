@@ -164,7 +164,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "mkdir -p ./analysis/ && echo \"$(date -u): $CONVERSATION_SUMMARY\" >> ./analysis/forensic_audit.log"
+            "command": "mkdir -p ./analysis/ && echo \"$(date -u): $CONVERSATION_SUMMARY\" >> ./analysis/forensic_audit.log && python3 \"$HOME/.claude/hooks/capture_session.py\""
           }
         ]
       }

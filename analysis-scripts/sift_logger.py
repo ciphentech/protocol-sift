@@ -2,7 +2,8 @@
 
 Writes JSONL events (one object per line) to ~/.protocol-sift/<session_id>.jsonl
 (LOGS_DIR — a fixed home-directory location so the S3 sync cron job can find
-session logs regardless of where a skill ran) and, if SIFT_S3_BUCKET is set,
+session logs regardless of where a skill ran; override with the SIFT_LOGS_DIR
+environment variable) and, if SIFT_S3_BUCKET is set,
 streams the accumulated log to S3 on each event. At session end, writes a
 human-readable audit summary to ./analysis/<session_id>_forensic_audit.log,
 relative to the working directory (i.e. into the case's analysis/ folder).
@@ -14,6 +15,7 @@ the log_agent_trace.py hook — providing microsecond precision:
 Every log entry includes os_user (from getpass.getuser()) for chain-of-custody.
 
 Environment variables:
+  SIFT_LOGS_DIR    — JSONL log directory (default: ~/.protocol-sift)
   SIFT_S3_BUCKET   — S3 bucket name (if unset, logs are written locally only)
   SIFT_S3_REGION   — AWS region     (default: us-west-2)
   SIFT_S3_PREFIX   — S3 key prefix  (default: sift-logs)
@@ -39,7 +41,7 @@ SIFT_S3_REGION = os.environ.get("SIFT_S3_REGION", "us-west-2")
 SIFT_S3_PREFIX = os.environ.get("SIFT_S3_PREFIX", "sift-logs")
 SIFT_AGENT_MODEL = os.environ.get("SIFT_AGENT_MODEL", "claude-sonnet-4-6")
 
-LOGS_DIR = Path.home() / ".protocol-sift"
+LOGS_DIR = Path(os.environ["SIFT_LOGS_DIR"]) if os.environ.get("SIFT_LOGS_DIR") else Path.home() / ".protocol-sift"
 
 try:
     _OS_USER = getpass.getuser()
