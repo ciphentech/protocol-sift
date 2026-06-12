@@ -65,10 +65,13 @@ def _parse(path: Path) -> tuple[str, list[dict], dict[str, dict[str, int]]]:
                     session_id = str(sid)
                     break
 
-            usage = obj.get("usage") or {}
+            # model and usage may be at top level (synthetic/test format) or
+            # nested inside message (actual Claude Code session file format)
+            msg = obj.get("message") if isinstance(obj.get("message"), dict) else {}
+            usage = obj.get("usage") or msg.get("usage") or {}
             if not (usage.get("input_tokens") or usage.get("output_tokens")):
                 continue
-            model = str(obj.get("model", "unknown"))
+            model = str(obj.get("model") or msg.get("model") or "unknown")
             if model not in totals:
                 totals[model] = {
                     "input_tokens": 0,
