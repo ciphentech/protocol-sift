@@ -1,9 +1,11 @@
 """Structured forensic audit logging for Protocol SIFT agent sessions.
 
-Writes JSONL events (one object per line) to ./logs/<session_id>.jsonl and,
-if SIFT_S3_BUCKET is set, streams the accumulated log to S3 on each event.
-At session end, writes a human-readable audit summary to
-./analysis/<session_id>_forensic_audit.log.
+Writes JSONL events (one object per line) to ~/.protocol-sift/<session_id>.jsonl
+(LOGS_DIR — a fixed home-directory location so the S3 sync cron job can find
+session logs regardless of where a skill ran) and, if SIFT_S3_BUCKET is set,
+streams the accumulated log to S3 on each event. At session end, writes a
+human-readable audit summary to ./analysis/<session_id>_forensic_audit.log,
+relative to the working directory (i.e. into the case's analysis/ folder).
 
 Timestamps use datetime.now(timezone.utc).isoformat() — the same format as
 the log_agent_trace.py hook — providing microsecond precision:
@@ -209,8 +211,8 @@ class SiftSession:
             sess.set_exit_code(0)
 
     Emits session_init on enter and session_complete / session_error on exit.
-    All events are written to ./logs/<session_id>.jsonl and, if SIFT_S3_BUCKET
-    is set, streamed to S3 on every write.
+    All events are written to ~/.protocol-sift/<session_id>.jsonl (LOGS_DIR)
+    and, if SIFT_S3_BUCKET is set, streamed to S3 on every write.
     """
 
     def __init__(self, skill: str, **extra):
