@@ -10,5 +10,7 @@ bash tests/smoke_ntp_agent.sh         # NTP enrichment: 3 end-to-end scenes
 bash tests/verify_install.sh          # install/file-presence checks
 bash tests/smoke_protocol_sift.sh     # full smoke: NIST, log files, token usage, plaso
 python3 tests/smoke_test.py --offline # tlcorr pipeline T-01..T-08 (live-NTP cases skipped)
+# tests/verify_deploy.sh is deliberately NOT part of this gate: it checks the
+# deployed ~/.claude tree, which only exists on the SIFT workstation (not in CI).
 
 echo "ACCEPTANCE: all checks passed"
