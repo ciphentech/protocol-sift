@@ -68,7 +68,9 @@ log2timeline.py \
 | `webhist` | Browser history (all browsers) |
 | `android` | Android device artifacts |
 
-**To list all available parsers:**
+> **Parser naming gotcha:** Individual parsers require their fully-qualified name including the category prefix. Use `text/syslog` not `syslog` — the short name is invalid and produces zero events with no error. When in doubt, run `--parsers list` and search the output for the exact name.
+
+**To list all available parsers and their exact names:**
 ```bash
 log2timeline.py --parsers list
 ```
@@ -118,6 +120,13 @@ log2timeline.py \
   --parsers mactime \
   --timezone UTC \
   ./analysis/bodyfile.txt
+
+# Parse Linux syslog files — use fully-qualified name text/syslog, NOT syslog
+log2timeline.py \
+  --storage-file ./analysis/<CASE_ID>_syslog.plaso \
+  --parsers text/syslog \
+  --timezone UTC \
+  /mnt/linux_mount/var/log/
 ```
 
 ### 3. Inspect Storage
@@ -291,3 +300,5 @@ Key filtering strategy in Timeline Explorer:
 - Large images (>100 GB) can take hours; use targeted `--parsers` or path-scoped ingest to reduce time
 - `psort.py` accepts multiple .plaso files — merge disk + memory bodyfile + log timelines into one export
 - `--slice` in psort is invaluable for quick pivots around a known event timestamp
+- **Parser name format:** individual parsers require the category prefix — `text/syslog` not `syslog`, `winevtx` not `evtx`. An invalid parser name silently produces zero events. Run `log2timeline.py --parsers list` to confirm exact names before use
+- **Plaso install:** requires the GIFT PPA (`ppa:gift/stable`) — packages `python3-plaso`, `plaso-tools`, `python3-pytsk3`. `install.sh` handles this automatically on Ubuntu/SIFT

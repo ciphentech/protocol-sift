@@ -147,6 +147,27 @@ else
 fi
 echo
 
+# ── Plaso (log2timeline / psort / pinfo) via GIFT PPA ────────────────────────
+
+if command -v log2timeline.py >/dev/null 2>&1; then
+    ok "Plaso already installed: $(command -v log2timeline.py)"
+elif [[ "$(uname -s)" == "Linux" ]] && command -v apt-get >/dev/null 2>&1; then
+    info "Installing Plaso from GIFT PPA (ppa:gift/stable)…"
+    if sudo add-apt-repository -y ppa:gift/stable >/dev/null 2>&1 && \
+       sudo apt-get update -qq && \
+       sudo apt-get install -y python3-plaso plaso-tools python3-pytsk3 >/dev/null 2>&1; then
+        ok "Plaso installed: log2timeline.py psort.py pinfo.py"
+    else
+        warn "Plaso install failed. Install manually:"
+        warn "  sudo add-apt-repository ppa:gift/stable"
+        warn "  sudo apt-get update && sudo apt-get install -y python3-plaso plaso-tools python3-pytsk3"
+    fi
+else
+    warn "Plaso not found and auto-install skipped (non-Linux or no apt-get)."
+    warn "Install manually from: https://github.com/log2timeline/plaso"
+fi
+echo
+
 # ── NTP enrichment Python dependencies ───────────────────────────────────────
 
 REQ="$REPO_DIR/requirements.txt"
