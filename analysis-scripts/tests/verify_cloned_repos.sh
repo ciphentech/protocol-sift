@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Minimum-viable install verifier for the NTP enrichment enhancement.
+# Build verifier for the NTP enrichment enhancement: checks the cloned repo
+# checkout, not the deployed workstation (that is tests/verify_deploy.sh).
 # Five assertions tied to files the build produces. Security: read-only checks.
 
 set -uo pipefail
