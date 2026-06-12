@@ -10,3 +10,7 @@ sift.env
 # Run-time output dirs created by the enricher/logger
 analysis/
 logs/
+
+# Editor local-history / IDE dirs
+.history/
+.idea/
