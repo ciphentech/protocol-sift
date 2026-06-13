@@ -16,6 +16,7 @@ with ``json.dumps`` (no template injection surface).
 from __future__ import annotations
 
 import json
+import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Iterable, Optional
@@ -137,5 +138,12 @@ def emit(
         "cli_args": cli_args or {},
     }
 
-    report_path.write_text(json.dumps(report, indent=2))
+    try:
+        report_path.write_text(json.dumps(report, indent=2))
+    except OSError as exc:
+        print(
+            f"[ntp-manifest] ERROR: Could not write accuracy report to {report_path}: {exc}",
+            file=sys.stderr,
+        )
+        raise
     return report_path

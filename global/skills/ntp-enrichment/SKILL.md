@@ -14,6 +14,16 @@ reads it and runs the tools in `analysis-scripts/`. Source evidence under
 - Typically run **after the `plaso-timeline` skill's `psort.py` CSV export** — that
   skill can hand off to this one for NIST anchoring.
 
+> **Producing the input CSV with psort:** Three pitfalls that cause silent bad input:
+> - Use a **targeted artifact plaso** (e.g. `evtx`-only ingest, ~15K events), not a
+>   full-disk supertimeline. psort scans every event regardless of filter parameters —
+>   a 9M-event plaso with a narrow date-range filter will hang for 25+ minutes.
+> - Use `--slice <timestamp>` rather than `--date-filter`, and anchor the timestamp to
+>   one confirmed present in the file via `pinfo.py`. A date-range that doesn't overlap
+>   the file's era produces an **empty CSV with exit code 0** — no error, no rows.
+> - `rm -f <output.csv>` before re-running — psort refuses to overwrite existing files.
+> See `~/.claude/skills/plaso-timeline/SKILL.md` for full psort guidance.
+
 ## Tools
 
 | Tool | Purpose |

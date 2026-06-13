@@ -296,13 +296,23 @@ fi
 
 if command -v psort.py >/dev/null 2>&1 && [ -f "$PLASO_FIXTURE" ]; then
     PSORT_OUT="$OUT/scene8_slice.csv"
+    PSORT_ERR=$(mktemp)
     rm -f "$PSORT_OUT"  # psort refuses to overwrite — remove stale file first
-    psort.py -o l2tcsv \
+    # timeout 120: a targeted evtx plaso (~15K events) completes in seconds;
+    # if PLASO_FIXTURE is accidentally set to a full-disk plaso, cap the hang.
+    timeout 120 psort.py -o l2tcsv \
         -w "$PSORT_OUT" \
         --slice "$PLASO_SLICE" \
-        "$PLASO_FIXTURE" >/dev/null 2>&1 \
-        && pass "scene8: psort --slice completed against $(basename "$PLASO_FIXTURE")" \
-        || fail "scene8: psort --slice returned non-zero"
+        "$PLASO_FIXTURE" >/dev/null 2>"$PSORT_ERR"
+    PSORT_RC=$?
+    if [ "$PSORT_RC" -eq 0 ]; then
+        pass "scene8: psort --slice completed against $(basename "$PLASO_FIXTURE")"
+    elif [ "$PSORT_RC" -eq 124 ]; then
+        fail "scene8: psort --slice timed out after 120 s — PLASO_FIXTURE may be a full-disk plaso; use a targeted evtx plaso instead"
+    else
+        fail "scene8: psort --slice returned $PSORT_RC — stderr: $(cat "$PSORT_ERR")"
+    fi
+    rm -f "$PSORT_ERR"
 
     EVENT_COUNT=$(wc -l < "$PSORT_OUT" 2>/dev/null || echo 0)
     [ "$EVENT_COUNT" -gt 1 ] \
