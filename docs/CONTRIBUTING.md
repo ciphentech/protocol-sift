@@ -1,191 +1,201 @@
-# Contributing to Hackasans Correlator
+# Contributing to Protocol SIFT
 
-This repository supports both local laptop development and AWS-hosted SIFT workstation deployment. The codebase is Python 3.11+, and the project is organized so the same source tree can be used for both local development and cloud infrastructure.
+Protocol SIFT is a DFIR orchestrator built on Claude Code for the SANS SIFT Workstation. Contributions follow a **skill-first, test-gated** workflow: the agent's reasoning instructions (`SKILL.md`) and specs come before implementation, and every change must pass the smoke test before merging.
 
-This is the **authoring repo**: it holds the design docs, the build-prompt series, and the AWS infrastructure. The generated NTP-enrichment code, its tests, and the deployable `install.sh` live in the sibling **`protocol-sift`** checkout (`../protocol-sift`, the ciphentech fork of teamdfir/protocol-sift) — never as a subdirectory or submodule of this repo.
+---
 
-## Prerequisites
+## Table of Contents
 
-- Python 3.11+
-- Git
-- AWS CLI configured for AWS deployment
-- Terraform 1.6+ for AWS infrastructure
-- `.env` configured from `.env.example`
+- [Repository layout](#repository-layout)
+- [Development setup](#development-setup)
+- [Running the tests](#running-the-tests)
+- [Change workflow](#change-workflow)
+- [Branch naming](#branch-naming)
+- [PR checklist](#pr-checklist)
+- [Evidence integrity rules](#evidence-integrity-rules)
+- [Key files](#key-files)
 
-## Local development
+---
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/ciphentech/hackasans-correlator.git
-   cd hackasans-correlator
-   ```
+## Repository layout
 
-2. Create and activate a virtual environment:
-   ```bash
-   bash scripts/setup-macos.sh
-   source .venv/bin/activate
-   ```
-
-3. If needed, install dependencies manually:
-   ```bash
-   python3 -m pip install -r requirements.txt
-   cp .env.example .env
-   ```
-
-4. Update `.env` with your Anthropic API key and any local configuration values.
-
-## AWS-hosted SIFT workstation
-
-1. Deploy the AWS infrastructure:
-   ```bash
-   cd infra/terraform
-   cp terraform.tfvars.example terraform.tfvars
-   ```
-
-2. Edit `terraform.tfvars` to set your operator IP CIDR, SSH public key, and other required values.
-
-3. Run Terraform:
-   ```bash
-   terraform init
-   terraform plan
-   terraform apply
-   ```
-
-4. Upload evidence to the evidence bucket using the upload utility.
-
-## Testing
-
-The NTP-enrichment test suite lives in the sibling `protocol-sift` repo:
-
-```bash
-cd ../protocol-sift/analysis-scripts
-python3 -m pytest tests/ -v            # expect 69 passed
-bash tests/smoke_ntp_agent.sh          # expect "OK: 3/3 scenes passed"
+```
+protocol-sift/
+├── analysis-scripts/       # Python tools the agent invokes via Bash()
+│   ├── ntp_enricher.py     # Main NTP enrichment pipeline
+│   ├── ntp_nist_client.py  # NIST time server queries
+│   ├── ntp_resolver.py     # NTP source resolution (6-level confidence tree)
+│   ├── ntp_manifest.py     # Accuracy report writer
+│   ├── sift_logger.py      # JSONL audit logging for every skill run
+│   ├── sift_s3_sync.py     # Cron-driven S3 sync for audit logs
+│   ├── tlcorr_pipeline.sh  # Pipeline orchestrator (ingest → enrich → verify → report)
+│   └── tests/              # Smoke test, unit tests, acceptance suite, fixtures
+├── global/
+│   ├── CLAUDE.md           # Global agent config (DFIR role, tool routing)
+│   ├── settings.json       # Permissions, hooks (PreToolUse, PostToolUse, Stop)
+│   └── hooks/              # log_agent_trace.py, capture_session.py
+├── skills/                 # Agent reasoning instructions (SKILL.md per domain)
+│   ├── ntp-enrichment/
+│   ├── plaso-timeline/
+│   ├── memory-analysis/
+│   ├── sleuthkit/
+│   ├── windows-artifacts/
+│   └── yara-hunting/
+├── docs/                   # Project documentation (you are here)
+├── install.sh              # SIFT workstation installer
+├── sift.env.template       # S3 env var template (copy to ~/.claude/sift.env)
+└── requirements.txt        # Python dependencies
 ```
 
-The tlcorr pipeline smoke suite (`tests/smoke_test.py`, T-01…T-08) lives
-there too and runs in protocol-sift's CI via `tests/run_acceptance.sh`;
-this repo carries no tests of its own.
+---
 
-### Where tests run
+## Development setup
 
-Three tiers, in order of authority — full detail and maintenance rules in
-[docs/TEST-STRATEGY.md](docs/TEST-STRATEGY.md):
+### Requirements
 
-1. **CI is the primary gate.** protocol-sift's GitHub Actions workflow runs
-   `bash analysis-scripts/tests/run_acceptance.sh` on every push/PR touching
-   `analysis-scripts/**`, `skills/**`, or `global/hooks/**`. Expect
-   `ACCEPTANCE: all checks passed`.
-2. **The repo suite runs on demand from any checkout** — laptop or the SIFT
-   workstation's `protocol-sift` checkout. Same command; add
-   `python3 tests/smoke_test.py` *without* `--offline` when you want live-NTP
-   proof.
-3. **Nothing test-related deploys to the workstation.** `install.sh` copies
-   runtime files only — no test files or fixtures ever land in `~/.claude`.
-   After each deploy, run `bash analysis-scripts/tests/verify_deploy.sh` from
-   the checkout (it only *reads* `~/.claude`; expect
-   `OK: 5/5 deploy checks passed`).
+- Ubuntu 22.04+ or macOS (for local testing)
+- Python 3.10+
+- `pip3 install -r requirements.txt`
+- Claude Code CLI (`claude`) with a valid `ANTHROPIC_API_KEY`
 
-Key rules: `run_acceptance.sh` is the single test registry; tests ride in the
-same PR as the code they cover; direct protocol-sift changes — tests included —
-get a `/ntp-prompt-sync` follow-up with green counts recomputed. protocol-sift
-ships a post-commit reminder for that last rule: run
-`bash scripts/install-git-hooks.sh` once per checkout there.
+### Install locally
 
-### Before opening a PR
+```bash
+git clone https://github.com/ciphentech/protocol-sift.git
+cd protocol-sift
+pip3 install -r requirements.txt
+```
 
-1. **Smoke test passes** — run from `protocol-sift/`:
-   ```bash
-   bash analysis-scripts/tests/smoke_ntp_agent.sh   # expect "OK: 3/3 scenes passed", exit 0
-   ```
-2. **Unit tests pass** — run from `protocol-sift/analysis-scripts/`:
-   ```bash
-   python3 -m pytest tests/ -v   # expect 69 passed
-   ```
-3. **No secrets in diff** — SOPS-encrypted files in `infra/` are the source of truth; never commit plaintext keys or tokens.
+For a full SIFT workstation install (deploys to `~/.claude/`):
 
-## Code style
+```bash
+bash install.sh
+```
 
-- Format code with `black`
-- Lint with `flake8`
-- Keep pull requests small and focused
-- Add tests for new features and bug fixes
+### Environment variables for testing
 
-Follow [docs/CLAUDE.md](docs/CLAUDE.md) (general LLM-coding rules) and
-[CLAUDE.md](CLAUDE.md) (secure coding requirements and project guardrails).
-Key points:
+The test suite uses env vars to redirect output away from production paths:
 
-- Surgical changes only — touch what the task requires, nothing else.
-- Evidence paths (`/cases`, `/mnt`, `/media`) are read-only; writes go to `./analysis/`, `./exports/`, `./reports/` only.
-- IAM additions in `infra/terraform/` must be least-privilege — no `*` wildcards.
-- Hook scripts must never crash a Claude Code session — always emit `{"continue": true}`.
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `SIFT_LOGS_DIR` | `~/.protocol-sift` | JSONL audit log directory |
+| `SIFT_PROJECTS_DIR` | `~/.claude/projects` | Claude session source for token capture |
+| `SIFT_ANALYSIS_DIR` | `./analysis` | Token usage report output |
+| `PLASO_FIXTURE` | `/cases/rd01/analysis/rd01-system-evtx.plaso` | Plaso file for Scene 8 on SIFT |
+| `PLASO_SLICE` | `2018-05-04T22:14:29` | `--slice` timestamp for Scene 8 |
 
-## Workflow
+---
 
-- Branch from `main`
-- Open pull requests against `main`
-- Include a summary of changes and test results in PR descriptions
-- Branch naming:
+## Running the tests
 
-| Work type | Pattern |
-|-----------|---------|
-| New feature | `feature/<short-description>` |
-| Bug fix | `fix/<short-description>` |
-| Docs only | `docs/<short-description>` |
-| Infrastructure | `infra/<short-description>` |
+### Smoke test (full end-to-end, all platforms)
 
-**Prompts and design docs first.** The prompt series in
-[docs/prompts/](docs/prompts/) and the design docs (`SPEC.md`, `FEATURES.md`,
-`ARCHITECTURE.md`) are the source of truth for the ntp-enrichment feature;
-the code in the sibling `protocol-sift` repo is generated from them. Prefer
-making changes by editing the relevant prompt or design doc here, then
-regenerating/applying the change in `protocol-sift` via the
-`/ntp-enrichment-generator` skill (or by executing the edited prompt's step) —
-this keeps the build recipe reproducible by construction. If you must change
-code directly in
-`protocol-sift` (hotfix, test gap, upstream merge), propagate it back into the
-prompt series with the **`/ntp-prompt-sync`** skill
-([.claude/skills/ntp-prompt-sync/SKILL.md](.claude/skills/ntp-prompt-sync/SKILL.md)).
-It carries the file→prompt ownership map, regenerates verbatim listings from
-the actual files, and recomputes the hard green-count milestones with pytest.
-Run `/ntp-prompt-sync audit` first for a read-only drift table.
+```bash
+bash analysis-scripts/tests/smoke_protocol_sift.sh
+```
 
-A code change that never lands back in the prompts is a defect: a fresh build
-no longer reproduces the real code, and `/ntp-enrichment-generator status`
-reports false FAILs.
+Covers 9 scenes: install completeness, NIST reachability, sift_logger JSONL, token usage, NTP enrichment (offline + live), evidence integrity, Plaso tool availability, and S3 sync dry-run. Plaso scenes skip gracefully in CI.
 
-## Repository structure
+### Python unit tests
 
-- `docs/` — design docs (`SPEC.md`, `FEATURES.md`, `ARCHITECTURE.md`), deployment, and contributor documentation
-- `docs/prompts/` — the build-prompt series (P-Scaffold, P-00 … P-10), indexed by `docs/PROMPTS.md` — source of truth for the ntp-enrichment feature
-- `.claude/` — project settings and skills (`ntp-enrichment-generator`, `ntp-prompt-sync`)
-- `infra/` — Terraform for the AWS-hosted SIFT workstation (Cognito, EC2, IAM, monitoring) and S3 configuration
-- `terraform/bootstrap/` — Terraform remote-state and GitHub OIDC bootstrap
-- `scripts/` — local environment bootstrap (`setup-macos.sh`), workstation deploy (`deploy-to-workstation.sh`), demo recording, dataset download
-- `.github/workflows/` — CI pipelines
-- `../protocol-sift` (sibling checkout) — generated NTP code, the `tlcorr_pipeline.sh` orchestrator, tests, skills, hooks, and `install.sh`
+```bash
+pytest analysis-scripts/tests/ -v
+```
+
+### Acceptance suite
+
+```bash
+bash analysis-scripts/tests/run_acceptance.sh
+```
+
+Runs the 3-scene acceptance test against synthetic fixtures plus the install-completeness and NTP dependency checks.
+
+### All tests must pass before opening a PR.
+
+---
+
+## Change workflow
+
+### 1. Skill changes (`SKILL.md`)
+
+The `SKILL.md` files are the agent's **executable reasoning instructions** — not documentation. Before changing one:
+
+- Open [docs/SPEC.md](SPEC.md) and confirm the change is in scope.
+- Update `SKILL.md` first. The Python tools implement what the skill instructs.
+- If the change affects agent behaviour (new phase, new output field, new guard), update the spec section first.
+
+### 2. Python tool changes (`analysis-scripts/`)
+
+- Add or update a unit test in `analysis-scripts/tests/` before touching the tool.
+- Run `pytest` to confirm the test fails (red), then implement and make it pass (green).
+- Run the smoke test to confirm no regressions across the full pipeline.
+
+### 3. Hook and settings changes (`global/`)
+
+- Changes to `settings.json` (permissions, hooks) affect every Claude Code session on the SIFT workstation. Test locally before opening a PR.
+- Hook scripts (`log_agent_trace.py`, `capture_session.py`) must never crash the session — all exceptions must be caught and printed to stderr.
+
+### 4. Installer changes (`install.sh`)
+
+- Test on a fresh Ubuntu 22.04 VM or a clean `~/.claude/` directory.
+- Confirm `install.sh` is idempotent — running it twice must not break anything.
+
+---
+
+## Branch naming
+
+| Type | Pattern | Example |
+|------|---------|---------|
+| Bug fix | `fix/<short-description>` | `fix/capture-session-import-os` |
+| Feature | `feat/<short-description>` | `feat/s3-sync-cron` |
+| Documentation | `docs/<short-description>` | `docs/add-contributing` |
+| Test | `tests/<short-description>` | `tests/smoke-plaso-scene8` |
+| Chore | `chore/<short-description>` | `chore/remove-demo-scripts` |
+
+---
 
 ## PR checklist
 
-- [ ] Smoke test passes (`smoke_ntp_agent.sh`, 3/3 scenes)
-- [ ] Unit tests pass (`pytest tests/`, 69 passed)
-- [ ] Prompt series synced if `protocol-sift` code changed (`/ntp-prompt-sync`)
-- [ ] No new plaintext secrets
-- [ ] Deployment doc updated if install paths or script names changed
-- [ ] `--dry-run` verified if the PR touches `scripts/deploy-to-workstation.sh`
+Before requesting review, confirm:
 
-## Notes
+- [ ] `bash analysis-scripts/tests/smoke_protocol_sift.sh` passes (all scenes, or skipped gracefully)
+- [ ] `pytest analysis-scripts/tests/ -v` passes
+- [ ] `bash analysis-scripts/tests/run_acceptance.sh` passes
+- [ ] No writes to `/cases/`, `/mnt/`, or `/media/` — evidence paths are read-only
+- [ ] New or changed Python scripts have at least one unit test
+- [ ] Hook scripts catch all exceptions and never exit non-zero (non-fatal errors only)
+- [ ] `sift.env` and `*.env` files are not committed (gitignored — put credentials in `~/.claude/sift.env`)
+- [ ] PR description explains the root cause (for fixes) or the use case (for features)
 
-- `README.md` is the primary user-facing quick start.
-- `CONTRIBUTING.md` (this file) is the canonical contributor onboarding entrypoint.
-- Setup and deployment details live in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md).
+---
 
-## Nice to have (deferred)
+## Evidence integrity rules
 
-- **Policy-sync pre-commit hook** — keep the secure-coding policy in
-  [CLAUDE.md](CLAUDE.md) byte-for-byte in sync with an overlay in
-  `protocol-sift/global/CLAUDE.md` (the file the deployed workstation agent
-  actually reads). Requires three pieces, none built yet: the overlay section
-  in the global CLAUDE.md (P-08's file — sync the prompt too),
-  `scripts/check_security_policy_sync.py`, and `scripts/install-git-hooks.sh`.
-  Until then, mirror policy edits between the two files manually.
+These are non-negotiable and enforced at multiple levels:
+
+1. **Never write to evidence paths** — `/cases/`, `/mnt/`, `/media/`, or any `evidence/` directory. The `settings.json` `deny` list enforces this at the permission layer; `ntp_enricher.py` raises `ValueError("protected evidence")` at the code layer.
+2. **Output routing** — all scripts, CSVs, JSON, and reports go to `./analysis/`, `./exports/`, or `./reports/` relative to the case working directory.
+3. **Timestamps** — always UTC. Use `datetime.now(timezone.utc).isoformat()`.
+4. **SHA-256 integrity** — `tlcorr_pipeline.sh` re-hashes the input CSV after enrichment and aborts if it changed. Do not break this check.
+5. **Audit logging** — every skill run must produce a JSONL audit log via `SiftSession` from `sift_logger.py`. Do not remove or bypass this.
+
+---
+
+## Key files
+
+| File | What to know |
+|------|-------------|
+| `skills/ntp-enrichment/SKILL.md` | The NTP enrichment agent instructions — the most important file in this repo |
+| `global/CLAUDE.md` | Agent role, forensic constraints, tool routing table |
+| `global/settings.json` | All permissions and hooks — changes here affect every session |
+| `analysis-scripts/ntp_enricher.py` | Core enrichment pipeline — evidence integrity guard lives here |
+| `analysis-scripts/sift_logger.py` | Audit logging — `SIFT_LOGS_DIR` env var for test isolation |
+| `global/hooks/capture_session.py` | Stop hook — reads `~/.claude/projects/` for token usage; `SIFT_PROJECTS_DIR` / `SIFT_ANALYSIS_DIR` for test isolation |
+| `install.sh` | SIFT workstation installer — must be idempotent and tested on a clean system |
+| `sift.env.template` | S3 env var template — copy to `~/.claude/sift.env`, never commit the populated version |
+
+---
+
+## Questions
+
+Open an issue on [GitHub](https://github.com/ciphentech/protocol-sift/issues) or reach the team via the SANS FindEvil Hackathon submission page.
