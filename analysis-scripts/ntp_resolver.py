@@ -240,9 +240,13 @@ def resolve_ntp_source(
         )
 
     # Priority 3: interactive prompt fallback (no flag, no logs).
+    # FEATURES: "one or two short prompts — never more". Prompt 1 asks for the
+    # source; if declined, prompt 2 narrows the environment so the assumption
+    # fallback below picks the right default. Never a third prompt.
     if interactive:
         answer = prompt_fn(
-            "[ntp-enrichment] NTP source for this host? (Enter to skip): "
+            "[ntp-enrichment] Do you know the NTP source for this host? "
+            "(hostname/IP, Enter to skip): "
         ).strip()
         if answer:
             return NTPContext(
@@ -251,6 +255,13 @@ def resolve_ntp_source(
                 ntp_assumption=False,
                 confidence_rank=ConfidenceRank.ANALYST_UNVERIFIED,
             )
+        if hosting == "unknown":
+            env = prompt_fn(
+                "[ntp-enrichment] Was the system cloud-hosted or on-prem? "
+                "(aws/azure/on_prem, Enter to skip): "
+            ).strip().lower()
+            if env in ("aws", "azure"):
+                hosting = env
 
     # Priority 4: cloud provider defaults.
     if hosting == "aws":
