@@ -10,41 +10,15 @@ rationale in [ARCHITECTURE.md](ARCHITECTURE.md).
 Two repos cooperate:
 
 - **`protocol-sift`** ([ciphentech/protocol-sift](https://github.com/ciphentech/protocol-sift))
-  — the code repo. The skill, the Python tools, the hooks, and `install.sh`
-  all live here (generated from this repo's prompt series). This is what
-  lands on the SIFT workstation.
-- **`hackasans-correlator`** (this repo) — the authoring and infrastructure
-  repo. Owns the AWS Terraform (`infra/terraform/`) and the optional deploy
-  wrapper `scripts/deploy-to-workstation.sh`. Hosts no agent code and is
-  never deployed.
+  (this repo) — the skill, the Python tools, the hooks, and `install.sh`
+  all live here. This is what lands on the SIFT workstation.
+- **`hackasans-correlator`** — the authoring and infrastructure repo. Owns
+  the AWS Terraform (`infra/terraform/`) and deploy tooling. Hosts no agent
+  code and is never deployed.
 
 ---
 
-## 1. How `deploy-to-workstation.sh` relates to `install.sh`
-
-They are two layers, not two alternatives doing the same job:
-
-- **`install.sh`** (in protocol-sift, authored by prompt P-10) is the **only
-  deploy entry point**. Run *on* the workstation, it copies the six skills
-  and seven analysis scripts into `~/.claude/`, ships the three
-  `global/hooks/` scripts, installs Plaso (GIFT PPA) and the Python
-  dependencies, stages `sift.env`, and installs the S3-sync cron job. It is
-  idempotent — safe to re-run after every `git pull`.
-- **`scripts/deploy-to-workstation.sh`** (in this repo) is an **optional
-  remote-delivery wrapper around `install.sh`**. It never replaces the
-  install logic; it only transports the repo to a machine you are not
-  sitting at and runs `install.sh` there — over rsync/SSH for a lab VM, or
-  over S3 + `aws ssm send-command` for the AWS workstation (which is
-  SSM-only, no SSH). Its value is the **audit trail**: a deterministic
-  deployment bundle staged to S3, SSM command IDs, and CloudWatch logs of
-  the run — plus `--dry-run` to print every command without executing.
-
-Rule of thumb: on the box → `install.sh` directly. Pushing to a box from
-your laptop and you want the deploy recorded → the wrapper.
-
----
-
-## 2. Primary workflow — SSM session + git + install.sh
+## 1. Primary workflow — SSM session + git + install.sh
 
 This is the team's day-to-day path for the AWS workstation:
 
@@ -71,35 +45,7 @@ you want a deploy that leaves a verifiable record, use the wrapper below.
 
 ---
 
-## 3. Audited alternative — `deploy-to-workstation.sh`
-
-All three modes are driven by
-[`scripts/deploy-to-workstation.sh`](../scripts/deploy-to-workstation.sh).
-The script is idempotent, supports `--dry-run`, and tolerates missing
-artifacts (clear `WARN:` lines, then continues).
-
-```bash
-# Local (you are on the SIFT box or the same host)
-bash scripts/deploy-to-workstation.sh --target local
-
-# Remote SSH-reachable SIFT VM
-bash scripts/deploy-to-workstation.sh --target local --host analyst@sift.lab
-
-# AWS workstation (reads instance id + region from terraform output)
-bash scripts/deploy-to-workstation.sh --target aws
-
-# Always available — print every command without executing
-bash scripts/deploy-to-workstation.sh --target aws --dry-run
-```
-
-The AWS path uploads a deployment bundle to the staging S3 bucket, runs
-`install.sh` via `aws ssm send-command`, and tails CloudWatch Logs until the
-command finishes. Always `--dry-run` before the first real AWS deploy of a
-session to confirm the bucket, instance id, and region resolve as expected.
-
----
-
-## 4. What lands on the workstation
+## 2. What lands on the workstation
 
 After `install.sh` (run directly or via the wrapper):
 
@@ -120,7 +66,7 @@ enricher's forbidden-path checks, the PreToolUse hook, and the
 
 ---
 
-## 5. Post-deploy checklist
+## 3. Post-deploy checklist
 
 - [ ] Ubuntu 22.04+ (the SANS-downloadable SIFT image satisfies this)
 - [ ] `python3 --version` ≥ 3.10
@@ -145,9 +91,7 @@ cd ~/cases/<case-id> && claude
 # Ask: "Normalize and enrich this Plaso timeline with NIST-anchored timestamps."
 ```
 
-Expect either an enriched timeline or a self-correction iteration — see the
-demo storyboard in [docs/demo/ntp-enrichment-self-correction.md](demo/ntp-enrichment-self-correction.md)
-(staged with `scripts/stage_self_correct_case.sh`, both in this repo).
+Expect either an enriched timeline or a self-correction iteration.
 
 ---
 
@@ -166,12 +110,7 @@ demo storyboard in [docs/demo/ntp-enrichment-self-correction.md](demo/ntp-enrich
   the install verifier, and the tlcorr pipeline tests). CI runs the same
   command on every push. See [CONTRIBUTING.md](../CONTRIBUTING.md) for the
   full PR checklist and where each test tier runs.
-- **Policy-sync pre-commit hook (planned, nice-to-have — not yet built).**
-  The idea: keep the secure-coding policy in
-  [`hackasans-correlator/CLAUDE.md`](../CLAUDE.md) byte-for-byte in sync
-  with an overlay in `protocol-sift/global/CLAUDE.md`, enforced by a
-  `scripts/check_security_policy_sync.py` pre-commit hook installed via
-  `bash scripts/install-git-hooks.sh`. None of the three pieces exists yet
-  (no overlay section in the global CLAUDE.md, no checker, no installer) —
-  until they do, keep the two policies aligned manually when editing either
-  file.
+- **Run the acceptance gate on every PR.** From the repo root:
+  `bash analysis-scripts/tests/run_acceptance.sh` — CI runs the same command
+  on every push. See [CONTRIBUTING.md](../CONTRIBUTING.md) for the full PR
+  checklist.

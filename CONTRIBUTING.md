@@ -190,7 +190,7 @@ These are non-negotiable and enforced at multiple levels:
 | `global/settings.json` | All permissions and hooks — changes here affect every session |
 | `analysis-scripts/ntp_enricher.py` | Core enrichment pipeline — evidence integrity guard lives here |
 | `analysis-scripts/sift_logger.py` | Audit logging — `SIFT_LOGS_DIR` env var for test isolation |
-| `global/hooks/capture_session.py` | Stop hook — reads `~/.claude/projects/` for token usage; `SIFT_PROJECTS_DIR` / `SIFT_ANALYSIS_DIR` for test isolation |
+| `scripts/hooks/capture_session.py` | Stop hook — reads `~/.claude/projects/` for token usage; `SIFT_PROJECTS_DIR` / `SIFT_ANALYSIS_DIR` for test isolation |
 | `install.sh` | SIFT workstation installer — must be idempotent and tested on a clean system |
 | `sift.env.template` | S3 env var template — copy to `~/.claude/sift.env`, never commit the populated version |
 

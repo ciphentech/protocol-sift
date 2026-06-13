@@ -4,14 +4,14 @@ on:
   push:
     paths:
       - 'analysis-scripts/**'
-      - 'global/hooks/**'
+      - 'scripts/hooks/**'
       - 'skills/**'
       - 'requirements.txt'
       - '.github/workflows/**'
   pull_request:
     paths:
       - 'analysis-scripts/**'
-      - 'global/hooks/**'
+      - 'scripts/hooks/**'
       - 'skills/**'
       - 'requirements.txt'
 

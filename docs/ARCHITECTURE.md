@@ -1,6 +1,6 @@
 # Architecture
 ## NTP Enrichment — Plaso Super-Timeline
-### SANS FindEvil Hackathon · hackasans-correlator
+### SANS FindEvil Hackathon · protocol-sift
 
 Narrative architecture and design rationale. For the step-by-step build
 sequence and acceptance gates, see [PROMPTS.md](PROMPTS.md); for the behavior
@@ -168,32 +168,29 @@ the agent's next action:
 
 ## Two repos, distinct concerns
 
-- **`ciphentech/hackasans-correlator`** (this repo) is the **authoring** repo:
-  design and infrastructure. It hosts this guide, `SPEC.md`, the build-prompt
-  series (`docs/prompts/`), and the Terraform in `infra/terraform/` that
-  stands up the AWS environment in `us-west-2` (VPC, bastion, SIFT
-  workstation, Cognito, CloudWatch, IAM and GitHub Actions OIDC). It also
-  documents the design process itself — what decisions were made and why.
-  It is never deployed.
 - **[`ciphentech/protocol-sift`](https://github.com/ciphentech/protocol-sift)**
-  (a **sibling checkout** at `../protocol-sift` — never a subdirectory or
-  submodule) is where the agent skill lands. The skill instructions
+  (this repo) is where the agent skill lands. The skill instructions
   (`skills/ntp-enrichment/SKILL.md`), the Python tools
   (`analysis-scripts/ntp_*.py`, `sift_logger.py`), the tests, the
   `global/` home template (CLAUDE.md routing, settings denies + hooks), and
   the `install.sh` that wires everything into the SIFT workstation all live
-  there. This is the repo that lands at `~/.claude/` on the SIFT instance —
+  here. This is the repo that lands at `~/.claude/` on the SIFT instance —
   the one Claude Code reads at runtime.
+- **`ciphentech/hackasans-correlator`** is the **authoring** repo: design
+  and infrastructure. It hosts the original build-prompt series, the
+  Terraform in `infra/terraform/` that stands up the AWS environment
+  (VPC, bastion, SIFT workstation, Cognito, CloudWatch, IAM and GitHub
+  Actions OIDC), and the design process documentation. It is never deployed.
 
 The infrastructure that makes the SIFT workstation reachable (double-hop SSM,
 Cognito MFA, the read-only `/cases/` mount, the encrypted EBS volumes) is
-defined in `hackasans-correlator/infra/` and must be stood up before the
-build prompts run. Together the repos make one system: design and infra in
-one, agent behaviour in the other.
+defined in `hackasans-correlator/infra/`. Together the repos make one system:
+design and infra in one, agent behaviour in the other.
 
 ## AWS infrastructure
 
-The infrastructure is defined using Terraform and includes:
+The infrastructure is defined in the sibling `hackasans-correlator` repo using
+Terraform and includes:
 
 - VPC with public and private subnets
 - EC2 bastion host (t3.micro)
@@ -202,6 +199,5 @@ The infrastructure is defined using Terraform and includes:
 - GitHub Actions OIDC integration for CI/CD
 
 Access flow: Cognito User Pool → Identity Pool → IAM role → SSM Session
-Manager → Bastion
-
-See [infra/README.md](../infra/README.md) for deployment instructions.
+Manager → Bastion. See the `infra/` directory in `hackasans-correlator` for
+deployment instructions.

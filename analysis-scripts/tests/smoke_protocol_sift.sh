@@ -19,7 +19,7 @@ set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 AS="$(dirname "$HERE")"            # analysis-scripts/
 ROOT="$(dirname "$AS")"           # protocol-sift/
-HOOKS="$ROOT/global/hooks"
+HOOKS="$ROOT/scripts/hooks"
 OUT=/tmp/sift_smoke_$$
 mkdir -p "$OUT"
 cleanup() { rm -rf "$OUT"; }
