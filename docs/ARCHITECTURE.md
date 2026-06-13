@@ -129,16 +129,8 @@ setup. The NTP skill's own text says: *"Typically run after the
 `plaso-timeline` skill's `psort.py` CSV export — that skill can hand off to
 this one for NIST anchoring."*
 
-`protocol-sift` carries two copies of the skill for this reason:
-
-| Path | Loaded when |
-|---|---|
-| `skills/ntp-enrichment/SKILL.md` | Agent started inside the `protocol-sift` repo checkout (development) |
-| `global/skills/ntp-enrichment/SKILL.md` → deployed to `~/.claude/skills/` | Any Claude Code session on the SIFT workstation (production) |
-
-The `global/` variant is the one analysts interact with. It is tuned for the
-deployed context: references `analysis-scripts/` relative to `~/.claude/`,
-omits development notes, and is authored by P-08 in the build-prompt series.
+`install.sh` copies `skills/ntp-enrichment/SKILL.md` to `~/.claude/skills/ntp-enrichment/SKILL.md`
+on the workstation — one canonical file, one source of truth.
 
 ## The pipeline orchestrator and its exit codes
 

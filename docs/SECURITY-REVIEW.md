@@ -82,7 +82,7 @@ def _reject_forbidden_path(output_path: Path) -> None:
 
 **Severity: HIGH**
 
-**Files:** `protocol-sift/skills/ntp-enrichment/SKILL.md` line 6; `protocol-sift/global/skills/ntp-enrichment/SKILL.md`; `hackasans-correlator/docs/prompts/P-06.md`, `P-08.md`
+**Files:** `protocol-sift/skills/ntp-enrichment/SKILL.md` line 6; `hackasans-correlator/docs/prompts/P-06.md`, `P-08.md`
 
 **What it is:**
 
