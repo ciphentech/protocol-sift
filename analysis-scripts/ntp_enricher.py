@@ -341,7 +341,7 @@ def _preflight(args: argparse.Namespace) -> None:
     output_parent = Path(args.output).parent
     try:
         output_parent.mkdir(parents=True, exist_ok=True)
-    except PermissionError as exc:
+    except OSError as exc:
         errors.append(f"Output directory not writable: {output_parent} — {exc}")
 
     for module in ("ntp_manifest", "ntp_nist_client", "sift_logger", "ntp_resolver"):
