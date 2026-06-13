@@ -1,0 +1,111 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="s6AEvgvvapt4AlcK6Hml">
+    <mxGraphModel dx="899" dy="561" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="850" pageHeight="1100" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-1" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="difference between time of NIST and UTC log." vertex="1">
+          <mxGeometry height="60" width="120" x="550" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-2" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="add in new field:&lt;div&gt;time of NIST&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="320" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-3" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="add new field:&lt;div&gt;time source of log&lt;/div&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="180" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-4" parent="1" style="rounded=0;whiteSpace=wrap;html=1;" value="time in UTC of log" vertex="1">
+          <mxGeometry height="60" width="120" x="40" y="250" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-5" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=default;align=center;verticalAlign=middle;rounded=0;" value="&lt;font style=&quot;font-size: 24px;&quot;&gt;...&lt;/font&gt;" vertex="1">
+          <mxGeometry height="30" width="60" x="460" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-9" edge="1" parent="1" source="zArfyt0tMpZ46WoQAXcK-6" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="zArfyt0tMpZ46WoQAXcK-7">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-6" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="log is being parsed" vertex="1">
+          <mxGeometry height="40" width="120" x="140" y="360" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-10" edge="1" parent="1" source="zArfyt0tMpZ46WoQAXcK-7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="zArfyt0tMpZ46WoQAXcK-8">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-7" parent="1" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" value="determine log source file and add field" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-12" edge="1" parent="1" source="zArfyt0tMpZ46WoQAXcK-8" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="zArfyt0tMpZ46WoQAXcK-11">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-8" parent="1" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" value="AI determines difference in time sync and add that field" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="550" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-11" parent="1" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" value="resort on NIST time field" vertex="1">
+          <mxGeometry height="60" width="120" x="140" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-13" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="plaso timeline to create&amp;nbsp;" vertex="1">
+          <mxGeometry height="30" width="170" x="430" y="330" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-22" edge="1" parent="1" source="zArfyt0tMpZ46WoQAXcK-17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="zArfyt0tMpZ46WoQAXcK-20">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="485" y="550" />
+            </Array>
+            <mxPoint x="650" y="540" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-17" parent="1" style="rhombus;whiteSpace=wrap;html=1;" value="ask the person to state&amp;nbsp;&lt;div&gt;what is the NTP source for the workstation&lt;/div&gt;" vertex="1">
+          <mxGeometry height="160" width="170" x="400" y="370" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-18" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="have an answer" vertex="1">
+          <mxGeometry height="30" width="60" x="630" y="410" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-19" parent="1" style="text;html=1;whiteSpace=wrap;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;rounded=0;" value="don&#39;t know, make assumption" vertex="1">
+          <mxGeometry height="10" width="165" x="425" y="560" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-25" edge="1" parent="1" source="zArfyt0tMpZ46WoQAXcK-20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="zArfyt0tMpZ46WoQAXcK-24">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-20" parent="1" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" value="end up with NTP field answered" vertex="1">
+          <mxGeometry height="75" width="165" x="635" y="513" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-21" edge="1" parent="1" source="zArfyt0tMpZ46WoQAXcK-17" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="zArfyt0tMpZ46WoQAXcK-20" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-27" edge="1" parent="1" source="zArfyt0tMpZ46WoQAXcK-24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" target="zArfyt0tMpZ46WoQAXcK-26">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-24" parent="1" style="shape=process;whiteSpace=wrap;html=1;backgroundOutline=1;" value="AI computes difference at that moment in time between source NTP and NIST" vertex="1">
+          <mxGeometry height="105" width="180" x="627.5" y="660" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-29" edge="1" parent="1" source="zArfyt0tMpZ46WoQAXcK-26" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;" target="zArfyt0tMpZ46WoQAXcK-28" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-26" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="update the data field for time difference" vertex="1">
+          <mxGeometry height="40" width="120" x="657.5" y="810" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-32" edge="1" parent="1" source="zArfyt0tMpZ46WoQAXcK-28" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=1;entryY=0.5;entryDx=0;entryDy=0;" target="zArfyt0tMpZ46WoQAXcK-31">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-33" connectable="0" parent="zArfyt0tMpZ46WoQAXcK-32" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];" value="YES" vertex="1">
+          <mxGeometry relative="1" x="0.6632" y="1" as="geometry">
+            <mxPoint as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-28" parent="1" style="rounded=1;whiteSpace=wrap;html=1;" value="resort on the NIST time field in UTC" vertex="1">
+          <mxGeometry height="60" width="115" x="660" y="920" as="geometry" />
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-34" edge="1" parent="1" source="zArfyt0tMpZ46WoQAXcK-31" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;" target="zArfyt0tMpZ46WoQAXcK-17">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="330" y="840" />
+              <mxPoint x="330" y="450" />
+            </Array>
+            <mxPoint x="330" y="840" as="sourcePoint" />
+            <mxPoint x="510" y="590" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="zArfyt0tMpZ46WoQAXcK-31" parent="1" style="rhombus;whiteSpace=wrap;html=1;" value="WAS a mistake made in source&amp;nbsp;&lt;div&gt;t&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;ime&amp;nbsp;&lt;/span&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;background-color: transparent; color: light-dark(rgb(0, 0, 0), rgb(255, 255, 255));&quot;&gt;or figured out time source?&lt;/span&gt;&lt;/div&gt;" vertex="1">
+          <mxGeometry height="120" width="170" x="405" y="780" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
