@@ -1,9 +1,12 @@
 """Structured forensic audit logging for Protocol SIFT agent sessions.
 
-Writes JSONL events (one object per line) to ./logs/<session_id>.jsonl and,
-if SIFT_S3_BUCKET is set, streams the accumulated log to S3 on each event.
-At session end, writes a human-readable audit summary to
-./analysis/<session_id>_forensic_audit.log.
+Writes JSONL events (one object per line) to ~/.protocol-sift/<session_id>.jsonl
+(LOGS_DIR — a fixed home-directory location so the S3 sync cron job can find
+session logs regardless of where a skill ran; override with the SIFT_LOGS_DIR
+environment variable) and, if SIFT_S3_BUCKET is set,
+streams the accumulated log to S3 on each event. At session end, writes a
+human-readable audit summary to ./analysis/<session_id>_forensic_audit.log,
+relative to the working directory (i.e. into the case's analysis/ folder).
 
 Timestamps use datetime.now(timezone.utc).isoformat() — the same format as
 the log_agent_trace.py hook — providing microsecond precision:
@@ -12,6 +15,7 @@ the log_agent_trace.py hook — providing microsecond precision:
 Every log entry includes os_user (from getpass.getuser()) for chain-of-custody.
 
 Environment variables:
+  SIFT_LOGS_DIR    — JSONL log directory (default: ~/.protocol-sift)
   SIFT_S3_BUCKET   — S3 bucket name (if unset, logs are written locally only)
   SIFT_S3_REGION   — AWS region     (default: us-west-2)
   SIFT_S3_PREFIX   — S3 key prefix  (default: sift-logs)
@@ -209,8 +213,8 @@ class SiftSession:
             sess.set_exit_code(0)
 
     Emits session_init on enter and session_complete / session_error on exit.
-    All events are written to ./logs/<session_id>.jsonl and, if SIFT_S3_BUCKET
-    is set, streamed to S3 on every write.
+    All events are written to ~/.protocol-sift/<session_id>.jsonl (LOGS_DIR)
+    and, if SIFT_S3_BUCKET is set, streamed to S3 on every write.
     """
 
     def __init__(self, skill: str, **extra):

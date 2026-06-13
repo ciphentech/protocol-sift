@@ -51,3 +51,37 @@ def test_assumption_basis_derives_from_context(tmp_path):
     assert len(report["assumption_bases"]) == 1
     assert report["assumption_bases"][0]["confidence_rank"] == 6
     assert report["assumption_bases"][0]["assumed_ntp_source"] == "pool.ntp.org"
+
+
+# G6: caveat applicability mapping (SPEC §6 / §2.3).
+
+
+def _caveat_ids(report):
+    return [c.split(":")[0] for c in report["spec_caveats_applicable"]]
+
+
+def test_caveat_6_1_present_only_when_assumption_true(tmp_path):
+    log_derived = NTPContext(ntp_source="dc01", ntp_offset_s=-0.0004,
+                             ntp_assumption=False, confidence_rank=1, source_eid=260)
+    rows = [{"ntp_assumption": "False"}] * 2
+    report = json.loads(emit(log_derived, rows, _result(tmp_path), tmp_path).read_text())
+    assert "6.1" not in _caveat_ids(report)
+
+    assumed = NTPContext(ntp_source="pool.ntp.org", ntp_assumption=True,
+                         confidence_rank=6)
+    rows = [{"ntp_assumption": "True"}] * 2
+    report = json.loads(emit(assumed, rows, _result(tmp_path), tmp_path).read_text())
+    assert "6.1" in _caveat_ids(report)
+
+
+def test_caveat_6_6_always_present(tmp_path):
+    for ctx in (
+        NTPContext(ntp_source="dc01", ntp_offset_s=-0.0004, ntp_assumption=False,
+                   confidence_rank=1, source_eid=260),
+        NTPContext(ntp_source="pool.ntp.org", ntp_assumption=True, confidence_rank=6),
+    ):
+        rows = [{"ntp_assumption": str(ctx.ntp_assumption)}] * 2
+        report = json.loads(emit(ctx, rows, _result(tmp_path), tmp_path).read_text())
+        assert "6.6" in _caveat_ids(report), (
+            f"unencrypted-NTP caveat missing for rank {int(ctx.confidence_rank)}"
+        )

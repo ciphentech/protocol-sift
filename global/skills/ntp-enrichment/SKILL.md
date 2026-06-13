@@ -18,7 +18,7 @@ reads it and runs the tools in `analysis-scripts/`. Source evidence under
 
 | Tool | Purpose |
 |------|---------|
-| `bash ~/.claude/analysis-scripts/tlcorr_pipeline.sh` | **Primary** — orchestrated pipeline: sibling-repo check, stage banners, integrity verification, accuracy report |
+| `bash ~/.claude/analysis-scripts/tlcorr_pipeline.sh` | **Primary** — orchestrated pipeline: helper check, stage banners, integrity verification, accuracy report |
 | `python3 ~/.claude/analysis-scripts/ntp_enricher.py` | Direct enricher — resolve → NIST query → enrich → self-correct (called by the pipeline) |
 
 Pipeline CLI flags (SPEC §4 CLI Flags):

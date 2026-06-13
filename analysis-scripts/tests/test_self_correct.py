@@ -16,6 +16,23 @@ def test_validate_context_rejects_implausible_offset():
     assert "1000" in vr.reason
 
 
+# G4: plausibility-bound boundary values (SPEC §2.2 — pins the strict inequality).
+
+
+def test_offset_exactly_1000_is_plausible():
+    for offset in (1000.0, -1000.0):
+        vr = validate_context(NTPContext(ntp_source="dc01", ntp_offset_s=offset,
+                                         ntp_assumption=True, confidence_rank=6))
+        assert vr.valid, f"offset {offset} at the bound must be accepted"
+
+
+def test_offset_just_over_1000_is_implausible():
+    vr = validate_context(NTPContext(ntp_source="dc01", ntp_offset_s=1000.001,
+                                     ntp_assumption=True, confidence_rank=6))
+    assert not vr.valid
+    assert "1000" in vr.reason
+
+
 def test_validate_enriched_row_rejects_more_than_24h():
     row = {"date": "08/30/2018", "time": "02:05:15",
            "nist_time": "2019-01-01 02:05:15.000Z"}

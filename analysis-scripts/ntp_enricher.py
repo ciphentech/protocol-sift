@@ -274,6 +274,7 @@ def validate_and_correct(
     output_path: str | Path,
     resolver_fn: Callable[[int], NTPContext],
     max_iterations: int = MAX_ITERATIONS,
+    on_iteration: Optional[Callable[[int, NTPContext, list[UnresolvedRow]], None]] = None,
 ) -> CorrectionResult:
     """Run enrich(); if the offset is implausible, RE-RESOLVE the source and retry.
 
@@ -281,6 +282,9 @@ def validate_and_correct(
     updated information is available). The loop is bounded by ``max_iterations``; when
     it exhausts without a plausible offset it returns a halt summary listing the
     unresolved rows (SPEC §4 Phase 3) — it never silently zeroes the offset.
+
+    ``on_iteration(iteration, context, unresolved)`` is called once per failed
+    iteration so callers can emit per-iteration forensic traces (deliverable #8).
     """
     current = ctx
     iterations = 0
@@ -295,6 +299,8 @@ def validate_and_correct(
             unresolved = [UnresolvedRow("context", pre.reason)]
 
         iterations += 1
+        if on_iteration is not None:
+            on_iteration(iterations, current, unresolved)
         if iterations >= max_iterations:
             return CorrectionResult({}, current, iterations, unresolved)
         current = resolver_fn(iterations)
@@ -408,7 +414,25 @@ def main(argv: Optional[list[str]] = None) -> int:
                 return 2
 
         resolver_fn = lambda _i: resolve_ntp_source(df, **resolve_kwargs)  # noqa: E731
-        correction = validate_and_correct(csv_path, ctx, output_path, resolver_fn)
+
+        def _trace_iteration(i: int, ctx_i: NTPContext, unresolved: list) -> None:
+            sess.log(
+                "self_correction_iteration",
+                iteration=i,
+                ntp_source=ctx_i.ntp_source,
+                ntp_offset_s=ctx_i.ntp_offset_s,
+                confidence_rank=int(ctx_i.confidence_rank),
+                unresolved_count=len(unresolved),
+                rejection_basis=unresolved[0].rejection_basis if unresolved else "",
+                reasoning=(
+                    f"Phase 3 self-correction iteration {i}: offset rejected; "
+                    f"re-resolving the NTP source (SPEC §4 Phase 3)."
+                ),
+            )
+
+        correction = validate_and_correct(
+            csv_path, ctx, output_path, resolver_fn, on_iteration=_trace_iteration
+        )
 
         if correction.result:
             sess.log(

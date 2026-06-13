@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# post-commit — LOUD reminder that the prompt series has drifted.
+#
+# The build-prompt series in ../hackasans-correlator/docs/prompts/ describes
+# this repo's code verbatim. When a commit touches a file the series owns,
+# the prompts must be reconciled with /ntp-prompt-sync (run from the
+# hackasans-correlator repo root) before the change is pushed.
+#
+# This hook only prints — it never blocks the commit, never edits anything.
+# Git hooks do not travel with clones: install once per checkout with
+#   bash scripts/install-git-hooks.sh
+
+# Paths whose changes drift the prompt series — mirrors the "When to invoke"
+# list in hackasans-correlator/.claude/skills/ntp-prompt-sync/SKILL.md.
+TRIGGERS='^(analysis-scripts/[^/]+\.py$|analysis-scripts/tests/|skills/|global/|install\.sh$|requirements\.txt$)'
+# Fork housekeeping the series never describes (skill ground rule 6).
+EXEMPT='^analysis-scripts/sift_s3_sync\.py$'
+
+changed="$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null \
+    | grep -E "$TRIGGERS" | grep -Ev "$EXEMPT")"
+[ -z "$changed" ] && exit 0
+
+cat >&2 <<'BANNER'
+
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+  !!                                                                !!
+  !!   PROMPT-SERIES DRIFT — this commit touched prompt-owned       !!
+  !!   files. Before pushing, reconcile the build prompts:          !!
+  !!                                                                !!
+  !!     cd ../hackasans-correlator && claude                       !!
+  !!     /ntp-prompt-sync          (read-only: /ntp-prompt-sync audit)
+  !!                                                                !!
+  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+  Prompt-owned files in this commit:
+BANNER
+printf '    %s\n' $changed >&2
+echo >&2
+
+exit 0
