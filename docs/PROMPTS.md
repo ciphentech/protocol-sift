@@ -31,6 +31,72 @@ All paths above are relative to the `protocol-sift` repo root.
 
 ---
 
+## How the prompts map to the enrichment flow
+
+The diagram below shows the full Plaso timeline + NTP enrichment flow that
+prompts P-02 through P-07 built. The top row shows the four fields added to
+every timeline row. The left column is the parse-and-enrich pipeline. The
+right column is the NTP source resolution decision tree, including the
+self-correction loop.
+
+![NTP Enrichment Flow](time_sync_diagram.jpg)
+
+### Left column — parse and enrich pipeline (P-02, P-04, P-07)
+
+1. **Log is being parsed** — the Plaso `psort.py` CSV is loaded row by row.
+   The parsing logic and data model (`ConfidenceRank`, `NTPContext`) were built
+   by **P-02** (`ntp_resolver.py`).
+2. **Determine log source file and add field** — `ntp_resolver.py` identifies
+   the NTP source from EID 35/260 Windows events in the timeline and writes
+   `ntp_source` onto each row. Source-resolution logic was extended in **P-03**.
+3. **AI determines difference in time sync and add that field** — `ntp_enricher.py`
+   computes the delta between the row's UTC timestamp and NIST time (`nist_delta_s`)
+   and adds the `nist_time` field. The enrichment core and safe writer were built
+   by **P-04** (`ntp_nist_client.py`, `ntp_enricher.py`).
+4. **Resort on NIST time field** — after enrichment, the output CSV is sorted on
+   `nist_time` so the timeline reflects NIST-anchored UTC order. The sort and
+   output path logic live in `ntp_enricher.py` (P-04).
+
+### Right column — NTP source resolution decision tree (P-02, P-03, P-05)
+
+The right column runs in parallel with the enrichment pipeline and determines
+*which* NTP source to anchor to.
+
+- **"Plaso timeline to create"** → the agent receives the psort CSV export and
+  enters Phase 1 of the SKILL.md reasoning loop (built by **P-06**).
+- **"Ask the person what is the NTP source for the workstation"** — if EID 35/260
+  events are absent or ambiguous, the agent prompts the analyst. If the analyst
+  knows the source, it is recorded with `ConfidenceRank.ANALYST_PROVIDED`.
+- **"Don't know, make assumption"** — if neither event-log evidence nor analyst
+  knowledge is available, the enricher falls back to an environment assumption
+  (`ConfidenceRank.ASSUMPTION`). Both paths merge at **"end up with NTP field
+  answered"**. The confidence ranking logic was built by **P-02** and **P-03**.
+- **"AI computes difference at that moment in time between source NTP and NIST"**
+  — `ntp_nist_client.py` queries the NIST time service and derives a clock offset
+  for the resolved NTP source. This was built by **P-04**.
+- **"Update the data field for time difference / resort on the NIST time field in UTC"**
+  — `ntp_enricher.py` writes the corrected fields and re-sorts. P-04.
+
+### Bottom — self-correction loop (P-05)
+
+- **"WAS a mistake made in source time or figured out time source? → YES"** — after
+  enrichment, `ntp_manifest.py` emits an accuracy report (`rubric_pass`,
+  `rubric_failures`, `suggested_corrective_action`). The agent reads it and, if
+  the rubric fails, loops back: re-resolves the NTP source and re-runs enrichment.
+  This `validate_and_correct` loop (max 3 iterations) was built by **P-05**
+  (`ntp_enricher.py`) and the accuracy report by **P-07** (`ntp_manifest.py`).
+
+### Top row — four fields added per timeline row (P-04, P-07)
+
+| Field | What it holds | Built by |
+|-------|--------------|----------|
+| `time in UTC of log` | Original timestamp from Plaso, normalised to UTC | P-04 |
+| `time source of log` (= `ntp_source`) | Resolved NTP source hostname or assumption | P-02 / P-03 |
+| `time of NIST` (= `nist_time`) | NIST-anchored timestamp for the row | P-04 |
+| `difference between time of NIST and UTC log` (= `nist_delta_s`) | Offset in seconds between NIST and raw UTC | P-04 / P-07 |
+
+---
+
 ## Keeping code and prompts in sync
 
 The preferred way to make a significant change to this repo's behaviour is to
