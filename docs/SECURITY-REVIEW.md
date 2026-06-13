@@ -1,6 +1,6 @@
 # Security Review — NTP Enrichment Skill
 
-**Scope:** `hackasans-correlator/docs/prompts/` (P-04, P-05, P-08, P-09) · generated code in `protocol-sift/analysis-scripts/` · hooks in `protocol-sift/global/hooks/` · skill files in `protocol-sift/skills/ntp-enrichment/` and `protocol-sift/global/skills/ntp-enrichment/` · `protocol-sift/global/settings.json`
+**Scope:** `hackasans-correlator/docs/prompts/` (P-04, P-05, P-08, P-09) · generated code in `protocol-sift/analysis-scripts/` · hooks in `protocol-sift/scripts/hooks/` · skill files in `protocol-sift/skills/ntp-enrichment/` · `protocol-sift/global/settings.json`
 
 **Review date:** 2026-06-12
 
@@ -82,7 +82,7 @@ def _reject_forbidden_path(output_path: Path) -> None:
 
 **Severity: HIGH**
 
-**Files:** `protocol-sift/skills/ntp-enrichment/SKILL.md` line 6; `protocol-sift/global/skills/ntp-enrichment/SKILL.md`; `hackasans-correlator/docs/prompts/P-06.md`, `P-08.md`
+**Files:** `protocol-sift/skills/ntp-enrichment/SKILL.md` line 6; `hackasans-correlator/docs/prompts/P-06.md`, `P-08.md`
 
 **What it is:**
 
@@ -158,7 +158,7 @@ And add the relative-path forms per Finding 1.
 
 **Severity: MEDIUM**
 
-**File:** `protocol-sift/global/hooks/log_agent_trace.py` line 37; `hackasans-correlator/docs/prompts/P-08.md`
+**File:** `protocol-sift/scripts/hooks/log_agent_trace.py` line 37; `hackasans-correlator/docs/prompts/P-08.md`
 
 **What it is:**
 
@@ -192,7 +192,7 @@ This preserves the structure of the log record without risking `__repr__` exposu
 
 **Severity: MEDIUM**
 
-**File:** `protocol-sift/global/hooks/capture_session.py` lines 25–26; `hackasans-correlator/docs/prompts/P-08.md`
+**File:** `protocol-sift/scripts/hooks/capture_session.py` lines 25–26; `hackasans-correlator/docs/prompts/P-08.md`
 
 **What it is:**
 
@@ -259,7 +259,7 @@ report = ntp_manifest.emit(..., cli_args=safe_args)
 
 **Severity: LOW**
 
-**File:** `protocol-sift/global/hooks/log_agent_trace.py` lines 29–30, 50–51; `hackasans-correlator/docs/prompts/P-08.md`
+**File:** `protocol-sift/scripts/hooks/log_agent_trace.py` lines 29–30, 50–51; `hackasans-correlator/docs/prompts/P-08.md`
 
 **What it is:**
 

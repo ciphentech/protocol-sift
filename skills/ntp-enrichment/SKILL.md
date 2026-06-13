@@ -3,7 +3,7 @@
 Anchor every Plaso event timestamp to NIST UTC by recovering NTP sync evidence from the
 artifact and computing an inferred clock offset, so events from different log sources can
 be correlated on one authoritative reference. This skill is documentation only: the agent
-reads it and runs the flat Python tools in `analysis-scripts/`. Source evidence under
+reads it and runs the tools in `analysis-scripts/`. Source evidence under
 `/cases/`, `/mnt/`, `/media/` is read-only (SPEC §8); enriched output is written to
 `./exports/`. The original Plaso CSV is never modified.
 
@@ -15,20 +15,26 @@ reads it and runs the flat Python tools in `analysis-scripts/`. Source evidence 
   skill can hand off to this one for NIST anchoring.
 
 ## Tools
+
 | Tool | Purpose |
 |------|---------|
-| `python3 analysis-scripts/ntp_enricher.py` | CLI entry point — resolve → NIST query → enrich → self-correct → accuracy report |
+| `bash ~/.claude/analysis-scripts/tlcorr_pipeline.sh` | **Primary** — orchestrated pipeline: helper check, stage banners, integrity verification, accuracy report |
+| `python3 ~/.claude/analysis-scripts/ntp_enricher.py` | Direct enricher — resolve → NIST query → enrich → self-correct (called by the pipeline) |
 
-CLI flags (SPEC §4 CLI Flags):
+Pipeline CLI flags (SPEC §4 CLI Flags):
 ```
---input <csv>          Plaso l2tcsv export under ./exports/ (source, read-only)
---output <csv>         enriched CSV under ./exports/
---case-dir <path>      case directory under /cases/ (context only)
---ntp-source <value>   skip the Phase 2 prompt; cross-checked against artifact logs
---skip-ntp             pass original columns through unchanged (NOT NIST-anchored;
-                       a chain-of-custody warning is emitted and recorded)
---nist-server <host>   override the NIST server (allowlisted hostnames only)
---host-os / --hosting / --windows-domain-joined   hints for the assumption fallback
+--input  <csv>              Plaso l2tcsv export path (source, read-only)
+--case   <id>               Case identifier (used in output filenames)
+--outdir <path>             Output root; exports/, analysis/, reports/ created here
+--ntp-source <value>        Skip Phase 2 prompt; cross-checked against artifact logs
+--skip-ntp                  Pass original columns through unchanged (NOT NIST-anchored;
+                            a chain-of-custody warning is emitted and recorded)
+--nist-server <host>        Override the NIST server (allowlisted hostnames only)
+--host-os <os>              OS hint for assumption fallback (windows|linux|mac)
+--hosting <env>             Hosting hint (aws|azure|gcp|onprem)
+--windows-domain-joined     Flag: treat host as domain-joined for NTP assumption
+--non-interactive           Suppress interactive prompts (required in agent context)
+--skip-nist-check           Skip live NIST query (offline/CI use only)
 ```
 
 ## Workflow
@@ -58,10 +64,12 @@ Check every offset against the **plausibility bound ±1000 s**. On an implausibl
 halt and list the **unresolved rows** with the basis for each.
 
 ## Outputs (SPEC §2 and §2.3)
+
 | Output | Path |
 |--------|------|
 | Enriched Plaso CSV | `./exports/<CASE_ID>_timeline_enriched.csv` |
 | Accuracy report (JSON) | `./exports/<CASE_ID>_timeline_enriched_accuracy_report.json` |
+| Forensic audit log | `./analysis/<CASE_ID>_forensic_audit.log` |
 
 The accuracy report contains, per SPEC §2.3: `rows_total`, `rows_assumption_true`,
 `confidence_rank_distribution`, `assumption_bases` (reproducible), `spec_caveats_applicable`,
@@ -70,7 +78,8 @@ and any `unresolved_rows` from the Phase 3 halt summary.
 ## When to halt and ask the analyst
 - Cloud vs on-prem cannot be inferred and no `--ntp-source` was provided.
 - No NIST/NTP server reachable (SPEC §3.2).
-- Phase 3 iteration cap reached with unresolved rows.
+- Phase 3 iteration cap reached with unresolved rows — report the implausible offsets and
+  ask the analyst for the correct NTP source or a corrected offset value.
 - `--skip-ntp`: emit the chain-of-custody warning and pass the timeline through unenriched.
 
 ## Notes

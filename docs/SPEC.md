@@ -4,7 +4,7 @@
 **Submission Deadline:** June 15, 2026  
 **Team Size:** 2 (Backend Developer + Network/Security Automation Engineer)  
 **Architecture Pattern:** Direct Agent Extension (Claude Code / OpenClaw)  
-**Project:** `hackasans-correlator` — `ciphentech/hackasans-correlator`  
+**Project:** `protocol-sift` — `ciphentech/protocol-sift`  
 **Runtime:** Python on AWS (`us-west-2`)  
 **Budget:** $150 through June 15, 2026  
 **License:** MIT
@@ -256,7 +256,7 @@ The loop is bounded by a small fixed maximum iteration count. If the agent still
 
 ### AWS Components (Terraform — `hackasans-correlator`, `us-west-2`)
 
-The infrastructure is fully defined in `infra/terraform/` and deployed via GitHub Actions OIDC (no long-lived credentials).
+The infrastructure is fully defined in `infra/terraform/` in the sibling `hackasans-correlator` repo and deployed via GitHub Actions OIDC (no long-lived credentials).
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐

@@ -14,3 +14,4 @@ logs/
 # Editor local-history / IDE dirs
 .history/
 .idea/
+.DS_Store
