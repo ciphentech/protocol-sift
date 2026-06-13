@@ -299,6 +299,8 @@ Key filtering strategy in Timeline Explorer:
 - `pinfo.py` after ingest is mandatory — zero parser hits means configuration error, not a clean system
 - Large images (>100 GB) can take hours; use targeted `--parsers` or path-scoped ingest to reduce time
 - `psort.py` accepts multiple .plaso files — merge disk + memory bodyfile + log timelines into one export
-- `--slice` in psort is invaluable for quick pivots around a known event timestamp
+- `--slice` in psort is invaluable for quick pivots around a known event timestamp; prefer it over wide date-range filters — psort scans all events regardless of filter, so a full-disk .plaso with 9M+ events will hang for 25+ minutes even on a narrow range
+- **psort refuses to overwrite an existing output file** — always `rm -f` the target path before re-running, especially in automation scripts
+- **Use a targeted .plaso for testing** — a per-artifact ingest (e.g. evtx-only, 15K events) is orders of magnitude faster than re-scanning a full-disk supertimeline; anchor `--slice` to a timestamp confirmed present in that file via `pinfo.py`
 - **Parser name format:** individual parsers require the category prefix — `text/syslog` not `syslog`, `winevtx` not `evtx`. An invalid parser name silently produces zero events. Run `log2timeline.py --parsers list` to confirm exact names before use
 - **Plaso install:** requires the GIFT PPA (`ppa:gift/stable`) — packages `python3-plaso`, `plaso-tools`, `python3-pytsk3`. `install.sh` handles this automatically on Ubuntu/SIFT

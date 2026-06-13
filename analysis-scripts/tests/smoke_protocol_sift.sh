@@ -269,8 +269,16 @@ else
 fi
 echo
 
-# ── Scene 8: Plaso tool availability (SIFT workstation) ──────────────────────
+# ── Scene 8: Plaso tool availability + psort sanity (SIFT workstation) ────────
 echo "── Scene 8: Plaso tool availability (SIFT workstation) ─────────────────"
+# Override PLASO_FIXTURE to point at your targeted evtx plaso (small file, fast).
+# Avoid full-disk plaso files (9M+ events) — psort scans every event even for
+# narrow filters and will hang for 25+ minutes.
+PLASO_FIXTURE="${PLASO_FIXTURE:-/cases/rd01/analysis/rd01-system-evtx.plaso}"
+# Anchor --slice to a timestamp known to exist in rd01-system-evtx.plaso.
+# Do NOT use a date-range filter against a plaso whose events are in a different
+# era — all events will be filtered out and psort writes an empty CSV.
+PLASO_SLICE="${PLASO_SLICE:-2018-05-04T22:14:29}"
 
 for tool in log2timeline.py psort.py pinfo.py; do
     if command -v "$tool" >/dev/null 2>&1; then
@@ -284,6 +292,24 @@ if command -v log2timeline.py >/dev/null 2>&1; then
     log2timeline.py --version >/dev/null 2>&1 \
         && pass "scene8: log2timeline.py --version exits 0" \
         || skip "scene8: log2timeline.py --version returned non-zero"
+fi
+
+if command -v psort.py >/dev/null 2>&1 && [ -f "$PLASO_FIXTURE" ]; then
+    PSORT_OUT="$OUT/scene8_slice.csv"
+    rm -f "$PSORT_OUT"  # psort refuses to overwrite — remove stale file first
+    psort.py -o l2tcsv \
+        -w "$PSORT_OUT" \
+        --slice "$PLASO_SLICE" \
+        "$PLASO_FIXTURE" >/dev/null 2>&1 \
+        && pass "scene8: psort --slice completed against $(basename "$PLASO_FIXTURE")" \
+        || fail "scene8: psort --slice returned non-zero"
+
+    EVENT_COUNT=$(wc -l < "$PSORT_OUT" 2>/dev/null || echo 0)
+    [ "$EVENT_COUNT" -gt 1 ] \
+        && pass "scene8: psort output has $((EVENT_COUNT - 1)) event rows (slice non-empty)" \
+        || fail "scene8: psort output is empty — wrong plaso file or slice timestamp has no nearby events"
+elif command -v psort.py >/dev/null 2>&1; then
+    skip "scene8: psort in PATH but $PLASO_FIXTURE not found — set PLASO_FIXTURE env var to a targeted evtx plaso"
 fi
 echo
 
