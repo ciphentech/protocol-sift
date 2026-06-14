@@ -8,6 +8,15 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# ── SIFT workstation preflight ────────────────────────────────────────────────
+if ! command -v psort.py >/dev/null 2>&1; then
+    echo "[warn] psort.py not found — this script requires a SIFT workstation" >&2
+    echo "[warn] with Plaso installed. Install via:" >&2
+    echo "[warn]   sudo add-apt-repository ppa:gift/stable" >&2
+    echo "[warn]   sudo apt-get update && sudo apt-get install python3-plaso plaso-tools" >&2
+    exit 1
+fi
+
 CASE_DIR="${CASE_DIR:-/cases/CLIENT-IR-2025-001}"
 PLASO="${PLASO:-${CASE_DIR}/analysis/rd01-system-evtx.plaso}"
 EXPORTS="${EXPORTS:-${CASE_DIR}/exports}"
