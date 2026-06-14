@@ -92,27 +92,41 @@ protocol-sift/
 ├── README.md                          ← this file
 ├── install.sh                         ← automated installer
 ├── requirements.txt                   ← Python dependencies (pytest, pandas, ntplib, boto3)
+├── sift.env.template                  ← S3 env var template (copy to ~/.claude/sift.env)
 ├── global/
 │   ├── CLAUDE.md                      ← global behavioral instructions (1)
 │   ├── settings.json                  ← tool permissions + Stop hook    (2)
 │   └── settings.local.json            ← local sudo / apt overrides      (3)
+├── scripts/
+│   ├── hooks/
+│   │   ├── capture_session.py         ← Stop hook: token usage + session transcript (4)
+│   │   ├── log_agent_trace.py         ← PostToolUse hook: per-tool execution trace  (5)
+│   │   └── pretool_block_cases.py     ← PreToolUse hook: evidence-write guard       (6)
+│   ├── git-hooks/post-commit          ← local git post-commit hook
+│   └── install-git-hooks.sh           ← installs git-hooks into .git/hooks/
 ├── skills/
-│   ├── memory-analysis/SKILL.md       ← Volatility 3 skill              (4)
-│   ├── plaso-timeline/SKILL.md        ← Plaso / log2timeline skill      (5)
-│   ├── ntp-enrichment/SKILL.md        ← NTP time enrichment skill       (6)
-│   ├── sleuthkit/SKILL.md             ← Sleuth Kit / TSK skill          (7)
-│   ├── windows-artifacts/SKILL.md     ← EZ Tools / EVTX / Registry      (8)
-│   └── yara-hunting/SKILL.md          ← YARA / threat hunting skill     (9)
+│   ├── memory-analysis/SKILL.md       ← Volatility 3 skill              (7)
+│   ├── plaso-timeline/SKILL.md        ← Plaso / log2timeline skill      (8)
+│   ├── ntp-enrichment/SKILL.md        ← NTP time enrichment skill       (9)
+│   ├── sleuthkit/SKILL.md             ← Sleuth Kit / TSK skill          (10)
+│   ├── windows-artifacts/SKILL.md     ← EZ Tools / EVTX / Registry      (11)
+│   └── yara-hunting/SKILL.md          ← YARA / threat hunting skill     (12)
 ├── case-templates/
-│   └── CLAUDE.md                      ← per-case project template       (10)
+│   └── CLAUDE.md                      ← per-case project template       (13)
+├── docs/                              ← project documentation
+│   ├── ARCHITECTURE.md, SPEC.md, DEPLOYMENT.md
+│   ├── FEATURES.md, ACCURACY-REPORT.md, SECURITY-REVIEW.md
+│   └── TEST-PLAN.md, TEST-STRATEGY.md, CONTRIBUTING.md, dataset.md …
 └── analysis-scripts/
-    ├── generate_pdf_report.py         ← WeasyPrint PDF generator        (11)
-    ├── ntp_resolver.py                ← NTP source resolution tool      (12)
-    ├── ntp_enricher.py                ← NTP field computation + writer  (13)
-    ├── ntp_manifest.py                ← manifest JSON writer + rubric   (14)
-    ├── ntp_nist_client.py             ← NIST time service client        (15)
-    ├── sift_logger.py                 ← skill-level forensic audit log  (16)
-    └── sift_s3_sync.py                ← cron-driven S3 log sync script  (17)
+    ├── tlcorr_pipeline.sh             ← pipeline orchestrator (ingest→enrich→verify→report) (14)
+    ├── generate_pdf_report.py         ← WeasyPrint PDF generator        (15)
+    ├── ntp_resolver.py                ← NTP source resolution tool      (16)
+    ├── ntp_enricher.py                ← NTP field computation + writer  (17)
+    ├── ntp_manifest.py                ← manifest JSON writer + rubric   (18)
+    ├── ntp_nist_client.py             ← NIST time service client        (19)
+    ├── sift_logger.py                 ← skill-level forensic audit log  (20)
+    ├── sift_s3_sync.py                ← cron-driven S3 log sync script  (21)
+    └── tests/                         ← smoke tests, unit tests, fixtures
 ```
 
 ---
@@ -181,7 +195,7 @@ cp global/settings.local.json ~/.claude/settings.local.json
 
 ---
 
-### (4–9) skills/ → `~/.claude/skills/`
+### (7–12) skills/ → `~/.claude/skills/`
 
 **What they are:** Skill files are domain-specific prompt libraries that Claude loads
 on demand. Each `SKILL.md` contains exact CLI invocations, common flags, known
@@ -202,7 +216,7 @@ reads the skill file at task time — you do not need to invoke them manually.
 
 ---
 
-### (9) case-templates/ → `/cases/<casename>/CLAUDE.md`
+### (13) case-templates/ → `/cases/<casename>/CLAUDE.md`
 
 **What it is:** A per-case project CLAUDE.md. When you `cd /cases/<casename>` and
 launch `claude`, this file is loaded automatically as project-level instructions,
@@ -237,7 +251,7 @@ content and fill in new case details before use.
 
 ---
 
-### (11) analysis-scripts/generate_pdf_report.py → `/cases/<casename>/analysis/generate_pdf_report.py`
+### (15) analysis-scripts/generate_pdf_report.py → `/cases/<casename>/analysis/generate_pdf_report.py`
 
 **What it is:** A reusable WeasyPrint-based PDF report generator. Claude uses this
 as its output engine for all forensic PDF reports. It accepts a `data` dict and an
@@ -289,7 +303,7 @@ and `\S` escape sequences.
 
 ---
 
-### (12–15) analysis-scripts/ntp_*.py → `~/.claude/analysis-scripts/`
+### (16–19) analysis-scripts/ntp_*.py → `~/.claude/analysis-scripts/`
 
 **What they are:** The NTP enrichment tool layer. The agent calls these via `Bash()` as part of the `ntp-enrichment` skill workflow.
 
@@ -416,7 +430,7 @@ Claude will:
 1. Invoke `ntp_resolver.py` to identify the NTP source from EID 35/260 events in the timeline
 2. Query the NIST time service via `ntp_nist_client.py` to validate the source and measure clock offset
 3. Run `ntp_enricher.py` to compute corrected timestamps for every row and write the enriched CSV
-4. Write a session audit log to `./logs/<session_id>.jsonl` and a human-readable summary to `./analysis/<session_id>_forensic_audit.log`
+4. Write a session audit log to `~/.protocol-sift/<session_id>.jsonl` and a human-readable summary to `./analysis/<session_id>_forensic_audit.log`
 5. Run a self-correction loop if any rows fall outside the plausibility bound
 
 **Combined one-shot prompt**
@@ -474,7 +488,7 @@ enrichment phases, self-correction loops). These are written by `sift_logger.py`
 
 | File | Description |
 |------|-------------|
-| `./logs/<session_id>.jsonl` | Per-session JSONL event stream — one JSON object per line |
+| `~/.protocol-sift/<session_id>.jsonl` | Per-session JSONL event stream — one JSON object per line |
 | `./analysis/<session_id>_forensic_audit.log` | Human-readable skill summary with evidence file list and source citations |
 
 Session IDs are unique per run (`SIFT-YYYY-MM-DD-<8-hex-chars>`) — no log is ever
@@ -537,7 +551,7 @@ process that syncs completed log files from the local `./logs/` directory to S3
 at a configurable interval.
 
 On each cron run, `sift_s3_sync.py`:
-1. Scans the case `logs/` directory for all `.jsonl` files produced by `sift_logger.py`
+1. Scans `~/.protocol-sift/` for all `.jsonl` files produced by `sift_logger.py`
 2. Computes an MD5 of each local file and compares it against the S3 object ETag
 3. Uploads only files that are new or have changed since the last sync (`PutObject`)
 4. Prints a timestamped line per upload to stdout (captured by cron to a log file)
@@ -585,14 +599,15 @@ The `--dry-run` flag lists what would be uploaded without touching S3.
 
 #### Configuration environment variables
 
-`sift.env` at the repo root is the canonical place to set these. Source it before
-launching `claude` or in each cron entry:
+`sift.env.template` at the repo root is the canonical template. `install.sh` copies
+it to `~/.claude/sift.env` and sets the correct values. Source that installed copy
+before launching `claude` or in each cron entry:
 
 ```bash
-source /path/to/protocol-sift/sift.env
+source ~/.claude/sift.env
 ```
 
-The file ships with the following variables pre-configured:
+The template ships with the following variables pre-configured:
 
 ```bash
 export SIFT_S3_BUCKET=hackasans-correlator-dev-sift-ai-logs   # S3 bucket name
@@ -600,9 +615,9 @@ export SIFT_S3_REGION=us-west-2                                # AWS region
 export SIFT_S3_PREFIX=sift-logs                                # key prefix
 ```
 
-`sift.env` is listed in `.gitignore` — it is machine-local and should never be
-committed, especially if AWS credentials are added to it. Edit the values in place
-after cloning or installing.
+`~/.claude/sift.env` is machine-local and should never be committed — do not place
+AWS credentials in a file under the repo root. Edit the installed copy at
+`~/.claude/sift.env` after running `install.sh`.
 
 #### AWS credential chain
 
@@ -696,3 +711,5 @@ with SiftSession("plaso-timeline", case_dir=args.case_dir) as sess:
 The `SiftSession` context manager automatically emits `session_init` on entry and
 `session_complete` (or `session_error`) on exit, and writes the
 `<session_id>_forensic_audit.log` summary regardless of how the skill exits.
+
+---

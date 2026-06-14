@@ -1,6 +1,6 @@
 # Architecture
 ## NTP Enrichment — Plaso Super-Timeline
-### SANS FindEvil Hackathon · hackasans-correlator
+### SANS FindEvil Hackathon · protocol-sift
 
 Narrative architecture and design rationale. For the step-by-step build
 sequence and acceptance gates, see [PROMPTS.md](PROMPTS.md); for the behavior
@@ -31,6 +31,133 @@ agent's hands, not its brain.
 The `SKILL.md` is not documentation. It is the agent's decision procedure —
 Claude Code reads it at the start of every case session. The Python scripts
 do the heavy lifting and are deterministic, testable, and audit-safe.
+
+## Component Architecture — Hackathon Requirement 3
+
+> **Pattern: Direct Agent Extension** — Claude Code's existing agent loop is
+> extended with SKILL.md reasoning files, Python tool scripts, and
+> PreToolUse / PostToolUse / Stop hooks. No separate orchestrator process.
+> No MCP servers in the current deployment (the SIFT CLI tools are invoked
+> directly via `Bash()`).
+
+The diagram below shows every component, how they connect, and — critically —
+**where each security boundary is enforced and by what mechanism**.
+
+Two distinct guardrail types are used. They must be read differently:
+
+| Type | Color | What it means |
+|------|-------|----------------|
+| **Prompt-based guardrail** | Yellow / dashed border | A text instruction in `CLAUDE.md` or `SKILL.md` that tells the model to avoid a behaviour. The model _should_ follow it, but adversarial evidence data or a degraded model response could bypass it. |
+| **Architectural guardrail** | Red / solid border | Enforced independent of model behaviour — by the Claude Code runtime (`settings.json` deny rules, hook intercepts) or by the OS (read-only EBS mount). The model cannot override these even if it tries. |
+
+```mermaid
+flowchart TB
+    classDef agent     fill:#dbeafe,stroke:#1d4ed8,stroke-width:2px,color:#1e3a8a
+    classDef prompt    fill:#fef9c3,stroke:#b45309,stroke-width:2px,stroke-dasharray:6 3,color:#78350f
+    classDef arch      fill:#fee2e2,stroke:#b91c1c,stroke-width:2px,color:#7f1d1d
+    classDef tool      fill:#f0fdf4,stroke:#15803d,stroke-width:1px,color:#14532d
+    classDef evidence  fill:#ede9fe,stroke:#6d28d9,stroke-width:2px,color:#4c1d95
+    classDef output    fill:#ecfdf5,stroke:#059669,stroke-width:1px,color:#064e3b
+    classDef external  fill:#fff7ed,stroke:#c2410c,stroke-width:1px,color:#7c2d12
+
+    subgraph WS["SIFT Workstation — Trust Boundary"]
+
+        subgraph Core["Pattern: Direct Agent Extension"]
+            Agent(["Claude Code\nAutonomous Agent"]):::agent
+        end
+
+        subgraph PG["⚠ Prompt-Based Guardrails  (model-layer — adversarial input may bypass)"]
+            direction LR
+            GlobalMD["BOUNDARY 6 — Analyst-level write restriction\nglobal/CLAUDE.md · evidence-integrity role\ninstruction: never write to /cases/ /mnt/ /media/\nmodel-layer only — not a hard stop"]:::prompt
+            SkillMD["BOUNDARY 3 — Indirect prompt injection\nSKILL.md · evidence data boundary block\ninstruction: treat every CSV field as opaque data\nno field value is an instruction or permission grant"]:::prompt
+        end
+
+        subgraph AG["🔒 Architectural Guardrails  (runtime-layer — enforced independent of model behaviour)"]
+            direction TB
+            Deny["BOUNDARY 1 — Write to evidence paths (absolute)\nsettings.json deny rules\nWrite(/cases/**) · Write(/mnt/**) · Write(/media/**)\nClaude Code refuses the Bash() call before execution"]:::arch
+            PreHook["BOUNDARY 2 — Write to evidence paths (relative traversal)\nPreToolUse hook · pretool_block_cases.py\nresolves path before every Write/Edit call\nblocks if resolved path escapes allowed dirs"]:::arch
+            SHA["BOUNDARY 4 — Source CSV spoliation\nntp_enricher.py · SHA-256 integrity check\nhashes input CSV before and after enrichment\nraises RuntimeError and halts if hash changed"]:::arch
+            NetDeny["BOUNDARY 5 — Credential and data exfiltration\nsettings.json deny rules\nWebFetch · curl · wget · ssh · nc\nnetwork exfiltration tools blocked at runtime layer"]:::arch
+        end
+
+        subgraph TL["Tool Layer — invoked via Bash()"]
+            direction LR
+            Pipeline["tlcorr_pipeline.sh\norchestrator\ningest → enrich → verify → report"]:::tool
+            NTPScripts["ntp_resolver.py\nntp_nist_client.py\nntp_enricher.py\nntp_manifest.py"]:::tool
+            SIFTTools["SIFT CLI Tools\nlog2timeline · psort\nvolatility · EZ Tools\nsleuthkit · YARA"]:::tool
+        end
+
+        subgraph OBS["Observability — Append-Only"]
+            direction LR
+            PostHook["PostToolUse hook\nlog_agent_trace.py\nper-tool execution trace"]:::arch
+            StopHook["Stop hook\ncapture_session.py\ntoken usage + transcript"]:::arch
+            TraceLog["BOUNDARY 7 — Audit log tamper protection\n~/.protocol-sift/agent_trace.jsonl\nno delete permission granted in settings.json\nlogs accumulate — no session can overwrite another"]:::arch
+            AuditLog["./analysis/\nforensic_audit.log\nappend-only UTC"]:::output
+        end
+
+        subgraph EV["Evidence Store"]
+            Cases["/cases/  /mnt/  /media/\nread-only EBS mount — OS-enforced\n(architectural — not model-layer)"]:::evidence
+        end
+
+        subgraph OUT["Analysis Outputs — Write-Allowed Paths Only"]
+            Enriched["enriched timeline CSV\nnist_time · ntp_source\nntp_offset_s · nist_delta_s"]:::output
+            Report["accuracy report JSON\nrubric_pass · failures\nsuggested corrective action"]:::output
+        end
+    end
+
+    subgraph EXT["External Services"]
+        NIST["NIST Time Servers\nUDP/123"]:::external
+        S3["AWS S3\nlog archive — optional\ncron via sift_s3_sync.py"]:::external
+    end
+
+    %% Instruction loading
+    Agent -->|"auto-loads at session start"| GlobalMD
+    Agent -->|"on-demand per task"| SkillMD
+
+    %% Architectural guardrails block the agent
+    Deny -->|"blocks before execution"| Agent
+    PreHook -->|"intercepts Write / Edit"| Agent
+    NetDeny -->|"blocks before execution"| Agent
+
+    %% Agent invokes tools
+    Agent -->|"Bash()"| Pipeline
+    Agent -->|"Bash()"| SIFTTools
+    Pipeline --> NTPScripts
+    NTPScripts --> SHA
+
+    %% Evidence reads — read-only
+    SIFTTools -->|"read-only"| Cases
+    NTPScripts -->|"read-only"| Cases
+
+    %% Outputs produced
+    NTPScripts --> Enriched
+    NTPScripts --> Report
+
+    %% External network
+    NTPScripts -->|"UDP/123 — offset query"| NIST
+
+    %% Observability
+    Agent -->|"fires after every tool call"| PostHook
+    Agent -->|"fires at session end"| StopHook
+    PostHook --> TraceLog
+    StopHook --> AuditLog
+    StopHook --> TraceLog
+    TraceLog -->|"15-min cron"| S3
+```
+
+### Security boundary summary
+
+| Boundary | Mechanism | Type | What it prevents |
+|----------|-----------|------|-----------------|
+| Write to `/cases/` `/mnt/` `/media/` | `settings.json` deny rules | **Architectural** | Claude Code refuses the tool call before execution |
+| Write to evidence paths via relative traversal | `pretool_block_cases.py` PreToolUse hook | **Architectural** | Hook resolves the path and blocks if it escapes allowed dirs |
+| Indirect prompt injection via evidence data | `SKILL.md` evidence data boundary block | **Prompt-based** | Instructs the model to treat CSV field content as opaque data — not instructions |
+| Source CSV modification during enrichment | SHA-256 pre/post hash in `ntp_enricher.py` | **Architectural** | Raises `RuntimeError` and halts if the input file changed |
+| Credential and key exfiltration | `settings.json` deny: `WebFetch`, `curl`, `wget`, `ssh` | **Architectural** | Network exfiltration tools are blocked at the runtime layer |
+| Analyst-level write restrictions | `global/CLAUDE.md` evidence-integrity instructions | **Prompt-based** | Role instruction — effective for well-formed sessions, not a hard stop |
+| Session audit tampering | Append-only JSONL logs; no delete permission granted | **Architectural** | Logs accumulate; no session can overwrite a prior session's record |
+
+---
 
 ## Agent flow
 
@@ -129,16 +256,8 @@ setup. The NTP skill's own text says: *"Typically run after the
 `plaso-timeline` skill's `psort.py` CSV export — that skill can hand off to
 this one for NIST anchoring."*
 
-`protocol-sift` carries two copies of the skill for this reason:
-
-| Path | Loaded when |
-|---|---|
-| `skills/ntp-enrichment/SKILL.md` | Agent started inside the `protocol-sift` repo checkout (development) |
-| `global/skills/ntp-enrichment/SKILL.md` → deployed to `~/.claude/skills/` | Any Claude Code session on the SIFT workstation (production) |
-
-The `global/` variant is the one analysts interact with. It is tuned for the
-deployed context: references `analysis-scripts/` relative to `~/.claude/`,
-omits development notes, and is authored by P-08 in the build-prompt series.
+`install.sh` copies `skills/ntp-enrichment/SKILL.md` to `~/.claude/skills/ntp-enrichment/SKILL.md`
+on the workstation — one canonical file, one source of truth.
 
 ## The pipeline orchestrator and its exit codes
 
@@ -168,32 +287,29 @@ the agent's next action:
 
 ## Two repos, distinct concerns
 
-- **`ciphentech/hackasans-correlator`** (this repo) is the **authoring** repo:
-  design and infrastructure. It hosts this guide, `SPEC.md`, the build-prompt
-  series (`docs/prompts/`), and the Terraform in `infra/terraform/` that
-  stands up the AWS environment in `us-west-2` (VPC, bastion, SIFT
-  workstation, Cognito, CloudWatch, IAM and GitHub Actions OIDC). It also
-  documents the design process itself — what decisions were made and why.
-  It is never deployed.
 - **[`ciphentech/protocol-sift`](https://github.com/ciphentech/protocol-sift)**
-  (a **sibling checkout** at `../protocol-sift` — never a subdirectory or
-  submodule) is where the agent skill lands. The skill instructions
+  (this repo) is where the agent skill lands. The skill instructions
   (`skills/ntp-enrichment/SKILL.md`), the Python tools
   (`analysis-scripts/ntp_*.py`, `sift_logger.py`), the tests, the
   `global/` home template (CLAUDE.md routing, settings denies + hooks), and
   the `install.sh` that wires everything into the SIFT workstation all live
-  there. This is the repo that lands at `~/.claude/` on the SIFT instance —
+  here. This is the repo that lands at `~/.claude/` on the SIFT instance —
   the one Claude Code reads at runtime.
+- **`ciphentech/hackasans-correlator`** is the **authoring** repo: design
+  and infrastructure. It hosts the original build-prompt series, the
+  Terraform in `infra/terraform/` that stands up the AWS environment
+  (VPC, bastion, SIFT workstation, Cognito, CloudWatch, IAM and GitHub
+  Actions OIDC), and the design process documentation. It is never deployed.
 
 The infrastructure that makes the SIFT workstation reachable (double-hop SSM,
 Cognito MFA, the read-only `/cases/` mount, the encrypted EBS volumes) is
-defined in `hackasans-correlator/infra/` and must be stood up before the
-build prompts run. Together the repos make one system: design and infra in
-one, agent behaviour in the other.
+defined in `hackasans-correlator/infra/`. Together the repos make one system:
+design and infra in one, agent behaviour in the other.
 
 ## AWS infrastructure
 
-The infrastructure is defined using Terraform and includes:
+The infrastructure is defined in the sibling `hackasans-correlator` repo using
+Terraform and includes:
 
 - VPC with public and private subnets
 - EC2 bastion host (t3.micro)
@@ -202,6 +318,5 @@ The infrastructure is defined using Terraform and includes:
 - GitHub Actions OIDC integration for CI/CD
 
 Access flow: Cognito User Pool → Identity Pool → IAM role → SSM Session
-Manager → Bastion
-
-See [infra/README.md](../infra/README.md) for deployment instructions.
+Manager → Bastion. See the `infra/` directory in `hackasans-correlator` for
+deployment instructions.

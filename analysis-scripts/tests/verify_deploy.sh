@@ -33,7 +33,7 @@ done
 [ -z "$missing" ] && ok "6/6 skills deployed" \
     || no "skills missing SKILL.md under $CLAUDE_DIR/skills:$missing"
 
-# 3/5 — hooks (install.sh global/hooks glob)
+# 3/5 — hooks (install.sh scripts/hooks glob)
 missing=""
 for hook in pretool_block_cases.py log_agent_trace.py capture_session.py; do
     [ -f "$CLAUDE_DIR/hooks/$hook" ] || missing="$missing $hook"

@@ -32,8 +32,7 @@ be re-run in one command, plus a short manual checklist for the agent-level / de
 
 ## What already exists (regression baseline — do not duplicate)
 
-All in the sibling **`protocol-sift`** repo (`../protocol-sift` from
-`hackasans-correlator`), under `analysis-scripts/`:
+All in this repo (`protocol-sift`), under `analysis-scripts/`:
 
 | Asset | Covers |
 |---|---|
@@ -47,7 +46,7 @@ All in the sibling **`protocol-sift`** repo (`../protocol-sift` from
 | `tests/test_cli.py` (4) | `--help`, parse `--skip-ntp`, happy-path report, skip-ntp warns (Feature 6) |
 | `tests/smoke_ntp_agent.sh` | 3 offline scenes: happy / plausibility halt / integrity |
 | `tests/verify_cloned_repos.sh` | File-presence + ntplib pin |
-| `scripts/stage_self_correct_case.sh` + `docs/demo/ntp-enrichment-self-correction.md` (both now in hackasans-correlator) | Phase 3 demo kit |
+| Phase 3 demo kit | Staged in `hackasans-correlator` (sibling authoring repo) — not in this repo |
 
 **Run command (baseline, from the protocol-sift repo root):**
 `cd analysis-scripts && python3 -m pytest tests/ && bash tests/smoke_ntp_agent.sh`
@@ -224,7 +223,7 @@ The user asked whether a skill or prompt can automate this. Recommended:
    way to produce hackathon-deliverable #2/#8 evidence without hand-scripting the agent.
 2. **`tlcorr-smoke` skill** — an existing project smoke-test skill; run it alongside to
    confirm the NTP enrichment hasn't regressed the upstream timeline-correlation pipeline.
-3. **New `ntp-demo` skill** (see below) — wraps `demo/stage_self_correct_case.sh` so the
+3. **New `ntp-demo` skill** (see below) — wraps `tlcorr_pipeline.sh` so the
    self-correction scene can be run by name from a Claude Code session, with a recording mode
    for capturing the demo-video terminal (deliverable #2).
 4. The new `run_acceptance.sh` + CI workflow are the "press one button" regression path.
@@ -235,20 +234,18 @@ Mirror the existing `tlcorr-smoke` skill structure (a `# Skill: …` markdown fi
 frontmatter). New file: `skills/ntp-demo/SKILL.md`, mirrored to `~/.claude/skills/ntp-demo/SKILL.md`
 so it's invocable as `/ntp-demo` (that's how `tlcorr-smoke` and `ntp-enrichment` are registered).
 
-The skill drives the existing `analysis-scripts/demo/stage_self_correct_case.sh` (no new
-runner logic) and offers two modes via an argument:
+The skill drives `analysis-scripts/tlcorr_pipeline.sh` and offers two modes via an argument:
 
-- **`/ntp-demo` (simple run, default)** — `bash analysis-scripts/demo/stage_self_correct_case.sh`;
-  for a live walk-through add `PAUSE=1` so it stops between beats for narration.
+- **`/ntp-demo` (simple run, default)** — runs the pipeline with a staged implausible case;
+  add `PAUSE=1` for a narrated walk-through.
 - **`/ntp-demo record`** — wrap the run in a terminal recorder for a reproducible capture:
-  `asciinema rec ntp-demo.cast -c "PAUSE=1 bash analysis-scripts/demo/stage_self_correct_case.sh"`.
+  `asciinema rec ntp-demo.cast -c "PAUSE=1 bash analysis-scripts/tlcorr_pipeline.sh ..."`.
   The skill first checks `asciinema` is installed (`command -v asciinema`) and, if missing,
-  tells the user `sudo apt-get install -y asciinema` (it's in the Ubuntu repos on the SIFT box).
+  tells the user `sudo apt-get install -y asciinema`.
   Produces `ntp-demo.cast`, replayable with `asciinema play ntp-demo.cast`.
 
 The skill body documents: prerequisite checks (the fixture + enricher exist), the case path it
-stages (`/tmp/ntp_demo/DEMO-NTP-2026-001/`), the expected exit code 3 + unresolved-rows beat,
-and a pointer to `docs/demo/ntp-enrichment-self-correction.md` for the shot-by-shot storyboard.
+stages (`/tmp/ntp_demo/DEMO-NTP-2026-001/`), and the expected exit code 3 + unresolved-rows beat.
 
 > The narrated screencast itself (audio + screen) is still captured with OBS/QuickTime for the
 > 5-min submission video; `asciinema` gives a clean, re-runnable *terminal* record for the repo
@@ -259,13 +256,12 @@ and a pointer to `docs/demo/ntp-enrichment-self-correction.md` for the shot-by-s
 
 ## Agent-level acceptance pass (manual, for demo + deliverables #2/#6/#8)
 
-Documented as a checklist in `docs/demo/ntp-enrichment-self-correction.md` (extend) or a new
-`docs/acceptance-checklist.md`. Run on the SIFT workstation (offline):
+Documented as a checklist in `docs/acceptance-checklist.md` (create if missing). Run on the SIFT workstation (offline):
 
 1. **Happy path** — stage `ntp_mini.csv` as a case timeline; in a Claude Code session ask the
    skill to enrich offline/non-interactively. Confirm: 5 columns added, sorted on `nist_time`,
    LOG_DERIVED rank 1, accuracy report written.
-2. **Self-correction (on camera, #2)** — run `demo/stage_self_correct_case.sh`, then have the
+2. **Self-correction (on camera, #2)** — run `tlcorr_pipeline.sh` against a staged implausible case, then have the
    agent enrich the implausible case. Confirm halt, exit 3, `unresolved_rows` citing the
    ±1000 s bound, source sha256 unchanged.
 3. **Spoliation (#6)** — feed `ntp_spoliation.csv`; confirm the agent refuses the redirect,
@@ -319,7 +315,7 @@ To be included verbatim in the deliverable. Each SPEC/FEATURE item → covering 
 - `analysis-scripts/tests/test_manifest.py` (G6)
 
 **Reuse (no change):** all four fixtures, `tests/conftest.py`, `conftest.py`,
-`demo/stage_self_correct_case.sh`, the `/verify` and `tlcorr-smoke` skills.
+`analysis-scripts/tlcorr_pipeline.sh`, the `/verify` and `tlcorr-smoke` skills.
 
 ---
 
@@ -335,9 +331,6 @@ To be included verbatim in the deliverable. Each SPEC/FEATURE item → covering 
 6. Agent-level checklist (manual, on SIFT): steps 1–4 above pass; capture logs + the
    self-correction recording for deliverables #2/#6/#8.
 
-> **Note:** all paths in this plan root in the **`protocol-sift`** repo — the settled,
-> permanent home of the NTP code, tests, skills, demo kit, and CI workflow.
-> `hackasans-correlator` is strictly the authoring repo (design docs + prompts) and is a
-> **sibling checkout** — never a subdirectory or submodule. A previously sketched
-> repo-consolidation effort (moving the code into hackasans-correlator) was dropped;
-> nothing here needs re-pointing.
+> **Note:** all paths in this plan root in this repo (`protocol-sift`) — the permanent
+> home of the NTP code, tests, skills, and CI workflow. `hackasans-correlator` is the
+> sibling authoring repo (design docs, prompts, Terraform) and is never deployed.
