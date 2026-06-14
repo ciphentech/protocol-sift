@@ -18,8 +18,8 @@
 # Prerequisites:
 #   claude CLI installed (https://docs.claude.com/claude-code)
 #   ANTHROPIC_API_KEY set in environment
-#   ~/.claude/skills/ntp-enrichment/SKILL.md accessible (created by deploy-to-workstation.sh,
-#     or symlink ~/.claude → protocol-sift/global manually for dev use)
+#   ~/.claude/skills/ntp-enrichment/SKILL.md accessible (deployed by install.sh from
+#     skills/ntp-enrichment/, or run: bash scripts/record-demo.sh --setup)
 #   brew install asciinema   (recording)
 #   brew install agg         (optional GIF export)
 
@@ -49,7 +49,7 @@ done
 
 # ── Optional one-time setup: install the NTP skill into ~/.claude/skills/ ─────
 if $SETUP; then
-    SKILL_SRC="$PROTOCOL_SIFT_DIR/global/skills/ntp-enrichment"
+    SKILL_SRC="$PROTOCOL_SIFT_DIR/skills/ntp-enrichment"
     SKILL_DEST="$HOME/.claude/skills/ntp-enrichment"
     mkdir -p "$HOME/.claude/skills"
     ln -sfn "$SKILL_SRC" "$SKILL_DEST"
