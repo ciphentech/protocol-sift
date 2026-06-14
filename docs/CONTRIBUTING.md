@@ -104,6 +104,36 @@ ships a post-commit reminder for that last rule: run
    ```
 3. **No secrets in diff** — SOPS-encrypted files in `infra/` are the source of truth; never commit plaintext keys or tokens.
 
+### Manual spot-checks
+
+These checks exercise code paths that the automated suite doesn't reach (interactive
+stdin, no-network scenarios). Run them from the `protocol-sift` directory on a
+developer MacBook — they require a TTY and outbound internet.
+
+**Interactive resolver prompt (no EID 35/260 in timeline)**
+
+When `ntp_resolver.py` finds no EID 35 or 260 rows it falls back to asking the
+analyst for the NTP source interactively. To see this path:
+
+```bash
+# 1. Create a CSV with no EID 35/260 markers (EventID 37 plain text):
+cat > /tmp/ntp_no_eid.csv << 'EOF'
+date,time,timezone,MACB,source,sourcetype,type,user,host,short,desc,version,filename,inode,notes,format,extra
+05/04/2018,22:14:29,UTC,.....,EVT,WinEvtx,Content Modification Time,N/A,rd01,NTP sync event,EventID: 37 The time service is now synchronizing the system time with the time source.,2,C:\Windows\System32\winevt\Logs\System.evtx,N/A,,WinEvtx,
+EOF
+
+# 2. Run the enricher directly (must be a real TTY — not a subprocess):
+.venv/bin/python3 analysis-scripts/ntp_enricher.py \
+  --input /tmp/ntp_no_eid.csv \
+  --output /tmp/ntp_no_eid_out.csv \
+  --case-dir /tmp
+```
+
+Expected: the resolver prints its Phase 1/2 question and waits for input. Type an
+NTP hostname (e.g. `pool.ntp.org`) and press Enter — enrichment completes and the
+output CSV is written. This path is not exercised by `pytest` or the smoke suite
+because both run the enricher as a subprocess without a TTY.
+
 ## Code style
 
 - Format code with `black`
