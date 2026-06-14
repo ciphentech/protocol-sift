@@ -16,6 +16,11 @@ TRIGGERS='^(analysis-scripts/[^/]+\.py$|analysis-scripts/tests/|skills/|global/|
 # Fork housekeeping the series never describes (skill ground rule 6).
 EXEMPT='^analysis-scripts/sift_s3_sync\.py$'
 
+# Commits authored by the generator skill (P-XX: / P-Scaffold:) are the
+# prompt series writing itself — no drift, no reminder needed.
+msg="$(git log -1 --format='%s' HEAD 2>/dev/null)"
+echo "$msg" | grep -qE '^P-(Scaffold|[0-9]+):' && exit 0
+
 changed="$(git diff-tree --no-commit-id --name-only -r HEAD 2>/dev/null \
     | grep -E "$TRIGGERS" | grep -Ev "$EXEMPT")"
 [ -z "$changed" ] && exit 0

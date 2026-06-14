@@ -329,8 +329,42 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+def _preflight(args: argparse.Namespace) -> None:
+    """Validate critical preconditions before opening the audit session.
+
+    Failures here produce a descriptive [ntp-enrichment] ERROR to stderr and
+    exit 1 — before any SiftSession JSONL file is created, so the analyst can
+    fix the configuration without a partial audit trail to clean up.
+    """
+    errors: list[str] = []
+
+    input_path = Path(args.input)
+    if not input_path.exists():
+        errors.append(f"Input file not found: {input_path}")
+    elif not input_path.is_file():
+        errors.append(f"Input path is not a regular file: {input_path}")
+
+    output_parent = Path(args.output).parent
+    try:
+        output_parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        errors.append(f"Output directory not writable: {output_parent} — {exc}")
+
+    for module in ("ntp_manifest", "ntp_nist_client", "sift_logger", "ntp_resolver"):
+        try:
+            __import__(module)
+        except ImportError as exc:
+            errors.append(f"Required module not importable: {module} — {exc}")
+
+    if errors:
+        for msg in errors:
+            print(f"[ntp-enrichment] ERROR: {msg}", file=sys.stderr)
+        sys.exit(1)
+
+
 def main(argv: Optional[list[str]] = None) -> int:
     args = build_parser().parse_args(argv)
+    _preflight(args)
 
     # Import here so the module imports cleanly even if siblings are absent.
     import ntp_manifest
