@@ -29,7 +29,7 @@ class ConfidenceRank(IntEnum):
     LOG_DERIVED = 1         # EID 35/260, chronyc, w32tm recovered from the artifact
     ANALYST_CONFIRMED = 2   # --ntp-source provided AND consistent with logs
     ANALYST_UNVERIFIED = 3  # --ntp-source provided, no logs to cross-check
-    CLOUD_DEFAULT = 4       # AWS/Azure environment default
+    CLOUD_DEFAULT = 4       # AWS/Azure/GCP environment default
     DOMAIN_DEFAULT = 5      # on-prem Windows domain/standalone assumption
     DISTRO_DEFAULT = 6      # Linux distro / unknown fallback
 
@@ -184,7 +184,7 @@ def resolve_ntp_source(
       1. LOG_DERIVED        — EID 35/260 recovered from the artifact
       2. ANALYST_CONFIRMED  — --ntp-source provided AND consistent with logs
       3. ANALYST_UNVERIFIED — --ntp-source provided, no logs to cross-check
-      4. CLOUD_DEFAULT      — hosting in {aws, azure}
+      4. CLOUD_DEFAULT      — hosting in {aws, azure, gcp}
       5. DOMAIN_DEFAULT     — on-prem Windows (domain or standalone)
       6. DISTRO_DEFAULT     — on-prem Linux distro / unknown pool fallback
 
@@ -258,9 +258,9 @@ def resolve_ntp_source(
         if hosting == "unknown":
             env = prompt_fn(
                 "[ntp-enrichment] Was the system cloud-hosted or on-prem? "
-                "(aws/azure/on_prem, Enter to skip): "
+                "(aws/azure/gcp/on_prem, Enter to skip): "
             ).strip().lower()
-            if env in ("aws", "azure"):
+            if env in ("aws", "azure", "gcp"):
                 hosting = env
 
     # Priority 4: cloud provider defaults.
@@ -273,6 +273,12 @@ def resolve_ntp_source(
     if hosting == "azure":
         return NTPContext(
             ntp_source="time.windows.com",
+            ntp_assumption=True,
+            confidence_rank=ConfidenceRank.CLOUD_DEFAULT,
+        )
+    if hosting == "gcp":
+        return NTPContext(
+            ntp_source="metadata.google.internal",
             ntp_assumption=True,
             confidence_rank=ConfidenceRank.CLOUD_DEFAULT,
         )

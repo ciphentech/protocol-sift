@@ -55,9 +55,32 @@ stop at the first match:
 1. Artifact NTP logs (EID 35/260) → `confidence_rank = 1` (LOG_DERIVED), `ntp_assumption = false`
 2. `--ntp-source` consistent with the artifact → rank 2, `ntp_assumption = false`
 3. `--ntp-source`, no logs to cross-check → rank 3, `ntp_assumption = false`
-4. Cloud default (AWS → 169.254.169.123, Azure → time.windows.com) → rank 4, assumption true
+
+**If no artifact NTP logs/events were found *and* no `--ntp-source` was given, STOP — do
+not silently fall through to an assumed default.** Ask the operator (see *Operator gate*
+below) before applying any of:
+4. Cloud default (AWS → 169.254.169.123, Azure → time.windows.com, GCP → metadata.google.internal / 169.254.169.254) → rank 4, assumption true
 5. On-prem Windows (domain → "Domain Controller"; standalone → time.windows.com) → rank 5, assumption true
 6. On-prem Linux distro default → rank 6, assumption true
+
+#### Operator gate — no NTP evidence in the artifact
+When the artifact contains **no NTP logs or NTP events** and the operator gave no
+`--ntp-source`, halt and ask, in order:
+1. **Are these system(s) on-prem or in the cloud?**
+2. **If cloud:** may we assume the vendor's default NTP source for the device (e.g. AWS
+   → 169.254.169.123, GCP → metadata.google.internal, Azure → time.windows.com)?
+3. **If on-prem Windows or Linux:** may we assume the OS default NTP time source was used
+   (Windows → Domain Controller / time.windows.com; Linux → distro pool default)?
+
+Only after the operator confirms the environment and authorizes the assumption do you fall
+through to steps 4–6, recording `ntp_assumption = true`. Capture the operator's answers so
+the assumption basis is reproducible in the accuracy report.
+
+In **agent / `--non-interactive`** context the prompts cannot be answered live — the
+operator must pre-supply the answers as flags (`--hosting`, `--host-os`,
+`--windows-domain-joined`, or an explicit `--ntp-source`). Absent both NTP evidence and any
+of these hints, treat it as the halt condition and surface the question rather than
+defaulting.
 
 ### NIST query (SPEC §3)
 Validate the source against a public NIST/NTP server (regional → global → pool). If every
@@ -86,6 +109,10 @@ The accuracy report contains, per SPEC §2.3: `rows_total`, `rows_assumption_tru
 and any `unresolved_rows` from the Phase 3 halt summary.
 
 ## When to halt and ask the analyst
+- **No NTP logs or NTP events in the artifact and no `--ntp-source` provided** — run the
+  *Operator gate* (Phase 2): ask on-prem vs cloud, then ask whether to assume the cloud
+  vendor default (AWS/GCP/Azure) or the OS default (Windows/Linux). Do not fall through to
+  an assumed default until the operator confirms.
 - Cloud vs on-prem cannot be inferred and no `--ntp-source` was provided.
 - No NIST/NTP server reachable (SPEC §3.2).
 - Phase 3 iteration cap reached with unresolved rows — report the implausible offsets and

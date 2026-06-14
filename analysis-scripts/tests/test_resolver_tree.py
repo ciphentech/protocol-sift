@@ -84,6 +84,17 @@ def test_interactive_followup_asks_cloud_or_onprem(no_eids_csv_path):
     assert ctx.confidence_rank == 4
 
 
+def test_interactive_followup_gcp_offers_cloud_default(no_eids_csv_path):
+    rec = PromptRecorder(["", "gcp"])
+    ctx = resolve_ntp_source(_df(no_eids_csv_path), interactive=True, prompt_fn=rec)
+    assert len(rec.prompts) == 2
+    assert "gcp" in rec.prompts[1].lower()
+    # The follow-up answer narrows the fallback to the GCP default.
+    assert ctx.ntp_source == "metadata.google.internal"
+    assert ctx.ntp_assumption is True
+    assert ctx.confidence_rank == 4
+
+
 def test_interactive_never_more_than_two_prompts(no_eids_csv_path):
     rec = PromptRecorder(["", ""])  # decline both prompts
     ctx = resolve_ntp_source(_df(no_eids_csv_path), interactive=True, prompt_fn=rec)
@@ -124,13 +135,14 @@ def test_cli_source_inconsistent_flags_for_phase3(mini_csv_path):
     [
         (dict(hosting="aws"), "169.254.169.123", 4),
         (dict(hosting="azure"), "time.windows.com", 4),
+        (dict(hosting="gcp"), "metadata.google.internal", 4),
         (dict(host_os="windows"), "time.windows.com", 5),  # standalone, no domain
         (dict(host_os="linux", linux_distro="ubuntu"), "ntp.ubuntu.com", 6),
         (dict(host_os="linux", linux_distro="rhel"), "rhel.pool.ntp.org", 6),
         (dict(host_os="linux", linux_distro="debian"), "debian.pool.ntp.org", 6),
         (dict(host_os="linux", linux_distro="arch"), "pool.ntp.org", 6),
     ],
-    ids=["aws", "azure", "win-standalone", "ubuntu", "rhel", "debian", "other-distro"],
+    ids=["aws", "azure", "gcp", "win-standalone", "ubuntu", "rhel", "debian", "other-distro"],
 )
 def test_assumption_fallback_matrix(no_eids_csv_path, kwargs,
                                     expected_source, expected_rank):

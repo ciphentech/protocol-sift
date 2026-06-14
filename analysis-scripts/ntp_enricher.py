@@ -321,7 +321,7 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--skip-ntp", action="store_true", help="bypass enrichment entirely")
     p.add_argument("--nist-server", default=None, help="override the NIST server hostname")
     p.add_argument("--skip-nist-check", action="store_true", help="skip the live NIST query (offline/testing)")
-    p.add_argument("--hosting", default="unknown", choices=["aws", "azure", "on_prem", "unknown"])
+    p.add_argument("--hosting", default="unknown", choices=["aws", "azure", "gcp", "on_prem", "unknown"])
     p.add_argument("--host-os", default="unknown", choices=["windows", "linux", "unknown"])
     p.add_argument("--linux-distro", default="unknown")
     p.add_argument("--windows-domain-joined", action="store_true")
