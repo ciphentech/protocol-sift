@@ -18,6 +18,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 try:
@@ -31,17 +32,33 @@ ANALYSIS_SCRIPTS = SCRIPT_DIR.parent
 
 
 def query_ntp(host: str) -> dict:
-    c = ntplib.NTPClient()
-    resp = c.request(host, version=3)
-    return {
-        "offset_sec": resp.offset,
-        "stratum": resp.stratum,
-        "ref_id": ntplib.ref_id_to_text(resp.ref_id, resp.stratum),
-    }
+    last_exc = None
+    for attempt in range(1, 4):
+        try:
+            c = ntplib.NTPClient()
+            resp = c.request(host, version=3)
+            return {
+                "host": host,
+                "offset_sec": resp.offset,
+                "stratum": resp.stratum,
+                "ref_id": ntplib.ref_id_to_text(resp.ref_id, resp.stratum),
+            }
+        except Exception as exc:
+            last_exc = exc
+            if attempt < 3:
+                delay = 2 ** (attempt - 1)
+                print(
+                    f"      [warn] NTP attempt {attempt}/3 failed ({exc}); "
+                    f"retry in {delay}s",
+                    file=sys.stderr,
+                )
+                time.sleep(delay)
+    raise last_exc
 
 
 def build_synthetic_csv(ntp: dict, path: Path) -> None:
-    """One l2tcsv row mimicking a W32tm EventID 37 NTP sync event."""
+    """One l2tcsv row mimicking a W32tm EventID 35 NTP source-discovery event."""
+    offset_100ns = int(ntp["offset_sec"] * 10_000_000)
     row = {
         "date": "05/04/2018",
         "time": "22:14:29",
@@ -53,12 +70,13 @@ def build_synthetic_csv(ntp: dict, path: Path) -> None:
         "user": "N/A",
         "host": "rd01",
         "short": (
-            f"NTP offset: {ntp['offset_sec']:.3f}s stratum:{ntp['stratum']}"
+            f"[35 / 0x0023] NTP offset: {ntp['offset_sec']:.3f}s "
+            f"stratum:{ntp['stratum']}"
         ),
         "desc": (
-            f"EventID: 37 The time provider NtpClient is currently receiving "
-            f"valid time data from {ntp['ref_id']}. "
-            f"NTP offset: {ntp['offset_sec']:.6f}"
+            f"[35 / 0x0023] The time provider NtpClient is currently "
+            f"receiving valid time data from {ntp['host']}. "
+            f"Strings: ['{ntp['host']}', '{offset_100ns}']"
         ),
         "version": 2,
         "filename": r"C:\Windows\System32\winevt\Logs\System.evtx",
