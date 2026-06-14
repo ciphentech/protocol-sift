@@ -15,3 +15,4 @@ logs/
 .history/
 .idea/
 .DS_Store
+venv/
