@@ -110,6 +110,36 @@ bash analysis-scripts/tests/run_acceptance.sh
 
 Runs the 3-scene acceptance test against synthetic fixtures plus the install-completeness and NTP dependency checks.
 
+### Manual spot-checks
+
+These checks exercise code paths that the automated suite doesn't reach (interactive
+stdin, no-network scenarios). Run them from the `protocol-sift` directory on a
+developer MacBook — they require a TTY and outbound internet.
+
+**Interactive resolver prompt (no EID 35/260 in timeline)**
+
+When `ntp_resolver.py` finds no EID 35 or 260 rows it falls back to asking the
+analyst for the NTP source interactively. To see this path:
+
+```bash
+# 1. Create a CSV with no EID 35/260 markers (EventID 37 plain text):
+cat > /tmp/ntp_no_eid.csv << 'EOF'
+date,time,timezone,MACB,source,sourcetype,type,user,host,short,desc,version,filename,inode,notes,format,extra
+05/04/2018,22:14:29,UTC,.....,EVT,WinEvtx,Content Modification Time,N/A,rd01,NTP sync event,EventID: 37 The time service is now synchronizing the system time with the time source.,2,C:\Windows\System32\winevt\Logs\System.evtx,N/A,,WinEvtx,
+EOF
+
+# 2. Run the enricher directly (must be a real TTY — not a subprocess):
+.venv/bin/python3 analysis-scripts/ntp_enricher.py \
+  --input /tmp/ntp_no_eid.csv \
+  --output /tmp/ntp_no_eid_out.csv \
+  --case-dir /tmp
+```
+
+Expected: the resolver prints its Phase 1/2 question and waits for input. Type an
+NTP hostname (e.g. `pool.ntp.org`) and press Enter — enrichment completes and the
+output CSV is written. This path is not exercised by `pytest` or the smoke suite
+because both run the enricher as a subprocess without a TTY.
+
 ### All tests must pass before opening a PR.
 
 ---
@@ -190,7 +220,7 @@ These are non-negotiable and enforced at multiple levels:
 | `global/settings.json` | All permissions and hooks — changes here affect every session |
 | `analysis-scripts/ntp_enricher.py` | Core enrichment pipeline — evidence integrity guard lives here |
 | `analysis-scripts/sift_logger.py` | Audit logging — `SIFT_LOGS_DIR` env var for test isolation |
-| `scripts/hooks/capture_session.py` | Stop hook — reads `~/.claude/projects/` for token usage; `SIFT_PROJECTS_DIR` / `SIFT_ANALYSIS_DIR` for test isolation |
+| `global/hooks/capture_session.py` | Stop hook — reads `~/.claude/projects/` for token usage; `SIFT_PROJECTS_DIR` / `SIFT_ANALYSIS_DIR` for test isolation |
 | `install.sh` | SIFT workstation installer — must be idempotent and tested on a clean system |
 | `sift.env.template` | S3 env var template — copy to `~/.claude/sift.env`, never commit the populated version |
 
