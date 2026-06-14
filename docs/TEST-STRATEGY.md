@@ -9,7 +9,7 @@ suite, see [TEST-PLAN.md](TEST-PLAN.md) (historical).
 
 | Tier | Where it runs | What | When |
 |---|---|---|---|
-| **1 — CI (primary gate)** | GitHub Actions, ubuntu-latest | `bash analysis-scripts/tests/run_acceptance.sh` → `ACCEPTANCE: all checks passed` | Every push/PR touching `analysis-scripts/**`, `skills/**`, `scripts/hooks/**`, `requirements.txt`, or the workflows |
+| **1 — CI (primary gate)** | GitHub Actions, ubuntu-latest | `bash analysis-scripts/tests/run_acceptance.sh` → `ACCEPTANCE: all checks passed` | Every push/PR touching `analysis-scripts/**`, `skills/**`, `global/hooks/**`, `requirements.txt`, or the workflows |
 | **2 — Repo suite (on demand)** | Any checkout — laptop or the workstation's `protocol-sift` checkout | Same command; add `python3 tests/smoke_test.py` *without* `--offline` for live-NTP proof | Pre-PR, debugging, demo prep |
 | **3 — Workstation (post-deploy)** | SIFT box, from the repo checkout, after `bash install.sh` | `bash analysis-scripts/tests/verify_deploy.sh` → `OK: 5/5 deploy checks passed` — reads `~/.claude` only (8 scripts, 6 skills, 3 hooks, config, sync cron) | After every deploy |
 
