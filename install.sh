@@ -136,14 +136,14 @@ echo
 
 info "Installing hooks…"
 mkdir -p "$CLAUDE_DIR/hooks"
-if [[ -d "$REPO_DIR/scripts/hooks" ]]; then
-    for hook in "$REPO_DIR"/scripts/hooks/*.py; do
+if [[ -d "$REPO_DIR/global/hooks" ]]; then
+    for hook in "$REPO_DIR"/global/hooks/*.py; do
         [[ -f "$hook" ]] || continue
         cp "$hook" "$CLAUDE_DIR/hooks/$(basename "$hook")"
-        ok "  scripts/hooks/$(basename "$hook") → $CLAUDE_DIR/hooks/"
+        ok "  global/hooks/$(basename "$hook") → $CLAUDE_DIR/hooks/"
     done
 else
-    warn "  scripts/hooks/ not found, skipping."
+    warn "  global/hooks/ not found, skipping."
 fi
 echo
 
