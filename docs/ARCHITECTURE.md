@@ -1,6 +1,6 @@
 # Architecture
 ## NTP Enrichment — Plaso Super-Timeline
-### SANS FindEvil Hackathon · protocol-sift
+### SANS FindEvil Hackathon · hackasans-correlator
 
 Narrative architecture and design rationale. For the step-by-step build
 sequence and acceptance gates, see [PROMPTS.md](PROMPTS.md); for the behavior
@@ -19,7 +19,9 @@ An earlier draft of this project produced static Python scripts a human runs
 manually. That is wrong for Protocol SIFT, which is an *autonomous agent*:
 the Claude Code session IS the agent — it reasons, decides, runs tools, reads
 their output, self-corrects, and surfaces findings. The Python code is the
-agent's hands, not its brain.
+agent's hands, not its brain. The context, alternatives, and consequences of
+this choice are recorded in
+[ADR 0003 — The agent is the system](adr/0003-agent-is-the-system.md).
 
 ## Two things built simultaneously
 
@@ -38,7 +40,9 @@ do the heavy lifting and are deterministic, testable, and audit-safe.
 > extended with SKILL.md reasoning files, Python tool scripts, and
 > PreToolUse / PostToolUse / Stop hooks. No separate orchestrator process.
 > No MCP servers in the current deployment (the SIFT CLI tools are invoked
-> directly via `Bash()`).
+> directly via `Bash()`). See
+> [ADR 0004 — Direct Agent Extension](adr/0004-direct-agent-extension.md) for why
+> this pattern was chosen over a separate orchestrator or MCP servers.
 
 The diagram below shows every component, how they connect, and — critically —
 **where each security boundary is enforced and by what mechanism**.
@@ -157,7 +161,9 @@ flowchart TB
 | Analyst-level write restrictions | `global/CLAUDE.md` evidence-integrity instructions | **Prompt-based** | Role instruction — effective for well-formed sessions, not a hard stop |
 | Session audit tampering | Append-only JSONL logs; no delete permission granted | **Architectural** | Logs accumulate; no session can overwrite a prior session's record |
 
----
+The rationale for splitting guardrails into these two layers — and for making every
+evidence-integrity invariant architectural rather than prompt-based — is recorded in
+[ADR 0005 — Two-layer guardrails](adr/0005-two-layer-guardrails.md).
 
 ## Agent flow
 
@@ -241,23 +247,24 @@ NTP skill, runs the Python tools, reads the accuracy report they emit, and
 decides what to do next — **all inside a single Claude Code session with no
 human intervention between steps**.
 
-### The NTP enrichment skill is globally available to all skills on the workstation
+### The skill is a project skill; the logging layer is the global part
 
-`install.sh` deploys the NTP enrichment skill to `~/.claude/skills/ntp-enrichment/SKILL.md`
-(via the SKILLS array in the installer). Because `~/.claude/skills/` is the
-system-wide skill directory for Claude Code, the NTP skill is available to
-**every session on the workstation** — not just sessions started inside the
-`protocol-sift` checkout.
+Two different things ship to the workstation. **`global/` is the global home template**:
+`install.sh` copies `global/{CLAUDE.md, settings.json, settings.local.json}` to `~/.claude/`
+and `global/hooks/*.py` to `~/.claude/hooks/`, so the DFIR Orchestrator role, the deny
+rules, and the **logging / observability hooks** (`log_agent_trace.py` PostToolUse,
+`capture_session.py` Stop) apply to **every** session. **The NTP enrichment skill is not
+part of `global/`** — its single source of truth is `skills/ntp-enrichment/SKILL.md`
+(copied to `~/.claude/skills/` by `install.sh`, like the five upstream SIFT skills); there
+is no `global/skills/ntp-enrichment/` variant. The context, alternatives, and consequences
+are recorded in
+[ADR 0002 — NTP skill is a project skill, not global](adr/0002-ntp-skill-not-global.md).
 
-This makes cross-skill handoff natural. The `plaso-timeline` skill exports a
-Plaso CSV; the agent can immediately invoke the NTP enrichment skill within
-the same session to anchor timestamps to NIST UTC, without any additional
-setup. The NTP skill's own text says: *"Typically run after the
-`plaso-timeline` skill's `psort.py` CSV export — that skill can hand off to
-this one for NIST anchoring."*
-
-`install.sh` copies `skills/ntp-enrichment/SKILL.md` to `~/.claude/skills/ntp-enrichment/SKILL.md`
-on the workstation — one canonical file, one source of truth.
+Cross-skill handoff still works because all six skills land under `~/.claude/skills/`: the
+`plaso-timeline` skill exports a Plaso CSV and the agent invokes the NTP enrichment skill
+in the same session to anchor timestamps to NIST UTC. The NTP skill's own text says:
+*"Typically run after the `plaso-timeline` skill's `psort.py` CSV export — that skill can
+hand off to this one for NIST anchoring."*
 
 ## The pipeline orchestrator and its exit codes
 
@@ -285,31 +292,85 @@ the agent's next action:
 | `3` | Self-correction exhausted | Halt and display the unresolved rows |
 | other | Unexpected error | Log and surface to the analyst |
 
+## Logging and audit trail
+
+Every Protocol SIFT run is metered and audit-logged. Five structured artifacts are
+produced. Two — the forensic audit log and the per-session event stream — are written by
+the enricher itself (`sift_logger.py`) on **every run**. The other three are written by
+the **global Claude Code hooks** (PostToolUse / Stop) and therefore appear only during a
+live agent session; they belong to the `global/` home template, not to the skill.
+
+| Artifact (path) | Written by | When | Contents | Sample |
+|---|---|---|---|---|
+| `analysis/<session_id>_forensic_audit.log` | `sift_logger.py` | Every enricher run | Human-readable audit trail — most legible on screen | `PROTOCOL SIFT — FORENSIC AUDIT LOG`<br>`Session: SIFT-2026-06-14-9b9d6b1d   Outcome: session_complete (exit_code=0)`<br>`[…857799] skip_ntp_warning`<br>`  reasoning: --skip-ntp flag set or no NTP source resolved; bypassing enrichment per analyst instruction.` |
+| `~/.protocol-sift/<session_id>.jsonl` | `sift_logger.py` (override dir: `SIFT_LOGS_DIR`) | Every enricher run | Structured event stream, one JSON object per line: `session_init`, `tool_called`, `ntp_resolution`, `nist_query`, `self_correction_iteration`, `enrichment_complete` / `enrichment_halted`, `session_complete` | `{"type":"ntp_resolution","session_id":"SIFT-…","ntp_source":"","confidence_rank":null,"assumption":true,"files_accessed":[".../ntp_mini.csv"],"reasoning":"Phase 2: resolving NTP source …"}` |
+| `~/.protocol-sift/agent_trace.jsonl` | `log_agent_trace.py` (PostToolUse hook) | Live Claude session | Every Claude tool call: `ts`, `session_id`, `tool_name`, `tool_input` (truncated at 2000 chars) | `{"ts":"2026-06-14T18:18:01+00:00","session_id":"SIFT-…","tool_name":"Bash","tool_input":{"command":"python3 ntp_enricher.py --input … (truncated at 2000 chars)"}}` |
+| `analysis/token_usage.json` | `capture_session.py` (Stop hook) | Live Claude session | Per-model input/output/cache tokens + estimated USD | `{"generated_at":"…","session_id":"SIFT-…","by_model":{"claude-sonnet-4-6":{"input_tokens":1234,"output_tokens":567,"cache_read_input_tokens":8900,"cache_creation_input_tokens":200,"estimated_usd":0.0421},"_total_estimated_usd":0.0421}}` |
+| `analysis/<session_id>_session.jsonl` | `capture_session.py` (Stop hook) | Live Claude session | Full Claude session transcript (verbatim copy) | `{"type":"assistant","message":{"role":"assistant","content":[…]}}` — one line per session event |
+
+The `~/.protocol-sift/<session_id>.jsonl` event stream is the most direct record of the
+bounded self-correction loop: it emits one `self_correction_iteration` event per attempt,
+written by the enricher itself, so it is present even without the live hooks. In a live
+session, `agent_trace.jsonl` corroborates it, logging each retry as a separate
+`ntp_enricher.py` tool call. Audit tamper-resistance is architectural — `settings.json`
+grants no delete permission, so logs accumulate and no session can overwrite another
+(Boundary 7 in the security summary above).
+
+## Running the enricher directly
+
+The raw command the agent issues for the self-correction path, run from
+`../protocol-sift/analysis-scripts/` (useful for debugging or verification):
+
+```bash
+python3 ntp_enricher.py \
+  --input  exports/DEMO-NTP-2026-001_timeline.csv \
+  --output exports/DEMO-NTP-2026-001_timeline_enriched.csv \
+  --case-dir /tmp/ntp_demo/DEMO-NTP-2026-001 \
+  --skip-nist-check --non-interactive
+# exit code 3 = Phase 3 self-correction halt, by design
+```
+
+## Self-correction: bounded, not unbounded
+
+The self-correction loop is deliberately **bounded** (`validate_and_correct()`,
+`MAX_ITERATIONS = 3`, fail-closed halt with exit code 3) rather than an unbounded
+"retry until it passes" loop. The full context, decision, alternatives, and consequences
+are recorded in
+[ADR 0001 — Bounded self-correction loop](adr/0001-bounded-self-correction-loop.md).
+
+## Source references (paths in the sibling `protocol-sift` checkout)
+- Self-correction loop: `analysis-scripts/ntp_enricher.py` — `validate_and_correct()` (≈ lines 271–300), halt path (≈ lines 411–466).
+- Proven baseline: `analysis-scripts/tests/smoke_ntp_agent.sh` Scene 2.
+- Fixture (reused, unmodified): `analysis-scripts/tests/fixtures/ntp_mini_implausible.csv`.
+
 ## Two repos, distinct concerns
 
+- **`ciphentech/hackasans-correlator`** (this repo) is the **authoring** repo:
+  design and infrastructure. It hosts this guide, `SPEC.md`, the build-prompt
+  series (`docs/prompts/`), and the Terraform in `infra/terraform/` that
+  stands up the AWS environment in `us-west-2` (VPC, bastion, SIFT
+  workstation, Cognito, CloudWatch, IAM and GitHub Actions OIDC). It also
+  documents the design process itself — what decisions were made and why.
+  It is never deployed.
 - **[`ciphentech/protocol-sift`](https://github.com/ciphentech/protocol-sift)**
-  (this repo) is where the agent skill lands. The skill instructions
+  (a **sibling checkout** at `../protocol-sift` — never a subdirectory or
+  submodule) is where the agent skill lands. The skill instructions
   (`skills/ntp-enrichment/SKILL.md`), the Python tools
   (`analysis-scripts/ntp_*.py`, `sift_logger.py`), the tests, the
   `global/` home template (CLAUDE.md routing, settings denies + hooks), and
   the `install.sh` that wires everything into the SIFT workstation all live
-  here. This is the repo that lands at `~/.claude/` on the SIFT instance —
+  there. This is the repo that lands at `~/.claude/` on the SIFT instance —
   the one Claude Code reads at runtime.
-- **`ciphentech/hackasans-correlator`** is the **authoring** repo: design
-  and infrastructure. It hosts the original build-prompt series, the
-  Terraform in `infra/terraform/` that stands up the AWS environment
-  (VPC, bastion, SIFT workstation, Cognito, CloudWatch, IAM and GitHub
-  Actions OIDC), and the design process documentation. It is never deployed.
 
 The infrastructure that makes the SIFT workstation reachable (double-hop SSM,
 Cognito MFA, the read-only `/cases/` mount, the encrypted EBS volumes) is
-defined in `hackasans-correlator/infra/`. Together the repos make one system:
-design and infra in one, agent behaviour in the other.
+defined in `hackasans-correlator/infra/` and must be stood up before the
+build prompts run. Together the repos make one system: design and infra in
+one, agent behaviour in the other.
 
 ## AWS infrastructure
 
-The infrastructure is defined in the sibling `hackasans-correlator` repo using
-Terraform and includes:
+The infrastructure is defined using Terraform and includes:
 
 - VPC with public and private subnets
 - EC2 bastion host (t3.micro)
@@ -318,5 +379,6 @@ Terraform and includes:
 - GitHub Actions OIDC integration for CI/CD
 
 Access flow: Cognito User Pool → Identity Pool → IAM role → SSM Session
-Manager → Bastion. See the `infra/` directory in `hackasans-correlator` for
-deployment instructions.
+Manager → Bastion
+
+See [infra/README.md](../infra/README.md) for deployment instructions.
