@@ -13,6 +13,7 @@ published in this repository.
 | 0003 | The agent is the system; Python scripts are tools, not the application | Accepted |
 | 0004 | Direct Agent Extension: no separate orchestrator, no MCP servers | Accepted |
 | 0005 | Two-layer guardrails: architectural enforcement for evidence integrity | Accepted |
+| 0006 | Spec-driven development for the agent code | Accepted |
 
 ## Convention
 
