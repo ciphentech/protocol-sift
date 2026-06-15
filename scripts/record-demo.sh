@@ -104,26 +104,24 @@ _check_prereqs
 _setup_case() {
     local scene_dir="$1" case_id="$2" fixture="$3" extra_context="${4:-}"
     mkdir -p "$scene_dir/exports"
-    cp "$fixture" "$scene_dir/exports/${case_id}_timeline.csv"
 
     cat > "$scene_dir/CLAUDE.md" << CASEMD
 # Case: $case_id
 
 ## Pipeline
 Run NTP enrichment with:
-  bash $PIPELINE_ABS --input exports/${case_id}_timeline.csv --case $case_id --outdir .
+  bash $PIPELINE_ABS --input $fixture --case $case_id --outdir .
 
 ## Context
 $extra_context
 
 ## Evidence constraint
-Do not modify any existing file under exports/. The enriched timeline is written to
-exports/ as a new file (<case>_correlated.csv — never the same filename as the source).
-Analysis reports and audit logs go to ./analysis/.
+The source timeline ($fixture) is read-only evidence — never modify it. The enriched
+timeline is written to exports/ as a new file (<case>_correlated.csv). Analysis reports
+and audit logs go to ./analysis/.
 CASEMD
 }
 
-rm -rf "$DEMO_OUTDIR"
 _setup_case "$DEMO_OUTDIR/scene1" "demo_implausible" "$IMPLAUSIBLE_FIXTURE" \
     "Incident timeline from WIN-WORKSTATION. No NTP source override — let the agent resolve from artifacts."
 
@@ -157,6 +155,8 @@ STEPS_EOF
 # Inject shell variables into the steps file (not inside single-quoted heredoc)
 cat >> "$DEMO_STEPS" << STEPS_VARS
 DEMO_OUTDIR="$DEMO_OUTDIR"
+IMPLAUSIBLE_FIXTURE="$IMPLAUSIBLE_FIXTURE"
+CLEAN_FIXTURE="$CLEAN_FIXTURE"
 STEPS_VARS
 
 cat >> "$DEMO_STEPS" << 'STEPS_BODY'
@@ -173,7 +173,7 @@ _pause 2
 cd "$DEMO_OUTDIR/scene1"
 claude --print \
   "Normalize and enrich the Plaso timeline for case demo_implausible. \
-The timeline is at exports/demo_implausible_timeline.csv. \
+The timeline is at $IMPLAUSIBLE_FIXTURE. \
 Resolve the NTP source from case artifacts."
 _pause 3
 
@@ -186,7 +186,7 @@ _pause 2
 cd "$DEMO_OUTDIR/scene2"
 claude --print \
   "Normalize and enrich the Plaso timeline for case demo_enriched. \
-The timeline is at exports/demo_enriched_timeline.csv. \
+The timeline is at $CLEAN_FIXTURE. \
 The analyst has confirmed the NTP source is time.windows.com."
 _pause 3
 
@@ -199,7 +199,7 @@ _pause 2
 cd "$DEMO_OUTDIR/scene3"
 claude --print \
   "Normalize the Plaso timeline for case demo_skip. \
-The timeline is at exports/demo_skip_timeline.csv. \
+The timeline is at $CLEAN_FIXTURE. \
 Skip NTP enrichment — I understand the output will not be NIST-anchored."
 _pause 3
 
