@@ -732,3 +732,12 @@ The `SiftSession` context manager automatically emits `session_init` on entry an
 `<session_id>_forensic_audit.log` summary regardless of how the skill exits.
 
 ---
+
+## License
+
+Released under the MIT License — see [LICENSE](LICENSE).
+
+Protocol SIFT was created by Rob Lee and the
+[teamdfir project](https://github.com/teamdfir/protocol-sift); the NTP / time-sync
+enrichment feature in this repository was contributed by ciphentech. See
+[NOTICE](NOTICE) for the full attribution.

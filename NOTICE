@@ -1,0 +1,30 @@
+Protocol SIFT
+=============
+
+This repository is distributed under the MIT License (see LICENSE).
+
+Original work
+-------------
+Protocol SIFT was created by Rob Lee and the teamdfir project
+(https://github.com/teamdfir/protocol-sift). The DFIR Orchestrator
+configuration, the SANS SIFT skill files, the per-case templates, and the
+report tooling derive from that original work.
+
+Modifications and additions
+---------------------------
+The NTP / time-sync enrichment feature and supporting material in this
+repository were contributed by ciphentech for the SANS FindEvil Hackathon,
+including:
+
+  - skills/ntp-enrichment/SKILL.md
+  - analysis-scripts/ntp_resolver.py, ntp_nist_client.py, ntp_enricher.py,
+    ntp_manifest.py, sift_logger.py
+  - the global logging / observability hooks under global/hooks/
+  - the associated tests and documentation
+
+Copyright
+---------
+Copyright (c) 2024 ciphentech, and the original Protocol SIFT authors.
+
+This NOTICE file is provided for attribution. It is informational and does not
+modify the terms of the MIT License under which this software is released.
