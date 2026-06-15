@@ -31,22 +31,6 @@ reads it and runs the tools in `analysis-scripts/`. Source evidence under
 | `bash ~/.claude/analysis-scripts/tlcorr_pipeline.sh` | **Primary** — orchestrated pipeline: helper check, stage banners, integrity verification, accuracy report |
 | `python3 ~/.claude/analysis-scripts/ntp_enricher.py` | Direct enricher — resolve → NIST query → enrich → self-correct (called by the pipeline) |
 
-Pipeline CLI flags (SPEC §4 CLI Flags):
-```
---input  <csv>              Plaso l2tcsv export path (source, read-only)
---case   <id>               Case identifier (used in output filenames)
---outdir <path>             Output root; exports/, analysis/, reports/ created here
---ntp-source <value>        Skip Phase 2 prompt; cross-checked against artifact logs
---skip-ntp                  Pass original columns through unchanged (NOT NIST-anchored;
-                            a chain-of-custody warning is emitted and recorded)
---nist-server <host>        Override the NIST server (allowlisted hostnames only)
---host-os <os>              OS hint for assumption fallback (windows|linux|mac)
---hosting <env>             Hosting hint (aws|azure|gcp|onprem)
---windows-domain-joined     Flag: treat host as domain-joined for NTP assumption
---non-interactive           Suppress interactive prompts (required in agent context)
---skip-nist-check           Skip live NIST query (offline/CI use only)
-```
-
 ## Workflow
 
 ### Phase 2 — NTP source resolution (SPEC §4 Phase 2 Detail)
