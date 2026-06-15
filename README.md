@@ -13,6 +13,25 @@ rules, forensic tool skill files, per-case project templates, and PDF report too
 
 ---
 
+## Architecture
+
+**Pattern: Direct Agent Extension** — Claude Code's native agent loop is extended with
+`SKILL.md` reasoning files, Python tool scripts invoked via `Bash()`, and
+PreToolUse / PostToolUse / Stop hooks. There are no MCP servers; the SIFT CLI tools are
+invoked directly.
+
+![Protocol SIFT component architecture](docs/component-diagram.png)
+
+*Single-column view of the components, top to bottom: guardrails → agent → data sources →
+SIFT workstation tools → output pipeline. Two guardrail types are distinguished.
+**Architectural** (🔒 red — runtime/OS-enforced: `settings.json` deny rules, the PreToolUse
+path-traversal block, the enricher's SHA-256 source check, the read-only EBS evidence mount,
+and append-only logs) cannot be bypassed even if the model misbehaves. **Prompt-based**
+(⚠ yellow — model-layer: `SKILL.md` opaque-data handling, the `CLAUDE.md` evidence-integrity
+role) are advisory. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the full rationale.*
+
+---
+
 ## Prerequisites
 
 | Requirement | Notes |
