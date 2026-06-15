@@ -1,0 +1,32 @@
+%%{init: {"flowchart": {"htmlLabels": true, "curve": "basis", "nodeSpacing": 30, "rankSpacing": 42}, "themeVariables": {"fontSize": "14px"}}}%%
+flowchart TB
+    classDef title    fill:#f8fafc,stroke:#334155,stroke-width:1px,color:#0f172a
+    classDef agent    fill:#dbeafe,stroke:#1d4ed8,stroke-width:3px,color:#1e3a8a
+    classDef arch     fill:#fee2e2,stroke:#b91c1c,stroke-width:2px,color:#7f1d1d
+    classDef prompt   fill:#fef9c3,stroke:#b45309,stroke-width:2px,stroke-dasharray:6 3,color:#78350f
+    classDef tool     fill:#f0fdf4,stroke:#15803d,stroke-width:2px,color:#14532d
+    classDef data     fill:#ede9fe,stroke:#6d28d9,stroke-width:2px,color:#4c1d95
+    classDef out      fill:#ecfdf5,stroke:#059669,stroke-width:2px,color:#064e3b
+
+    Title["<b>Protocol SIFT — Component Architecture</b><br/>Pattern: <b>Direct Agent Extension</b> · No MCP servers<br/>SIFT Workstation · private subnet · SSM double-hop access"]:::title
+
+    subgraph GUARD["① Guardrails &nbsp; 🔒 red = architectural (cannot be bypassed) &nbsp;·&nbsp; ⚠ yellow = prompt-based (may be bypassed)"]
+        direction TB
+        AG["🔒 <b>Architectural</b> &nbsp; <i>(runtime / OS-enforced)</i><br/>settings.json deny: Write /cases /mnt /media · deny WebFetch / curl / wget / ssh<br/>PreToolUse hook: path-traversal block · ntp_enricher.py: SHA-256 source check<br/>read-only EBS evidence mount · append-only logs (no delete permission)"]:::arch
+        PG["⚠ <b>Prompt-based</b> &nbsp; <i>(model-layer)</i><br/>SKILL.md: treat every CSV field as opaque data · CLAUDE.md: evidence-integrity role"]:::prompt
+        AG ~~~ PG
+    end
+
+    Agent["<b>② Claude Code — Autonomous Agent</b><br/>reads SKILL.md as reasoning · invokes tools via Bash()<br/>PreToolUse / PostToolUse / Stop hooks · self-corrects, bounded ≤ 3 iterations"]:::agent
+
+    DS["<b>③ Data Sources</b><br/>Evidence store /cases /mnt /media (read-only)<br/>NIST time servers · UDP/123 (authoritative UTC reference)"]:::data
+
+    TOOLS["<b>④ SIFT Workstation Tools — invoked via Bash()</b><br/>tlcorr_pipeline.sh (ingest→enrich→verify→report)<br/>ntp_resolver · ntp_nist_client · ntp_enricher · ntp_manifest<br/>SIFT CLI: log2timeline · psort · volatility · sleuthkit · YARA"]:::tool
+
+    OUT["<b>⑤ Output Pipeline</b><br/>enriched timeline CSV (nist_time · ntp_source · ntp_offset_s)<br/>accuracy report JSON (assumptions · confidence ranks)<br/>append-only logs: forensic_audit.log · agent_trace.jsonl · token_usage.json"]:::out
+
+    Title ~~~ GUARD
+    GUARD ==>|enforced on / loaded into the agent| Agent
+    Agent ==>|"invokes Bash() tools + lifecycle hooks"| DS
+    DS ==>|read-only evidence + NIST UTC feed the tools| TOOLS
+    TOOLS ==>|writes| OUT
