@@ -75,7 +75,7 @@ Phase 2 can be overridden with `--ntp-source <value>` (skips the interactive pro
 
 The runtime is **Claude Code** on a SIFT EC2 workstation in private subnet. The Python tools (`ntp_resolver.py`, `ntp_enricher.py`) are deterministic and unit-tested. The `SKILL.md` is the agent's decision procedure — not documentation; *executable reasoning instructions* Claude Code reads at every session start.
 
-![Protocol SIFT Architecture](docs/component-diagram.jpg)
+![Protocol SIFT Architecture](docs/component-diagram.png)
 
 *Two guardrail types are in play. **Architectural guardrails** (primary, unconditionally enforced): read-only EBS mount, `ValueError("protected evidence")` raised by the enricher on any `/cases/` write attempt, SHA-256 integrity check after every run, encrypted EBS volumes, CloudWatch session logging. **Prompt-based guardrails** (secondary, instructed): the agent reads `SKILL.md` and is instructed not to write to source paths — but if it ignored that instruction, the architectural controls above would still refuse the write and log the attempt. See [ARCHITECTURE.md](docs/ARCHITECTURE.md) and [SPEC.md §5 Security Boundary Summary](docs/SPEC.md) for the full table.*
 
