@@ -13,7 +13,7 @@
 
 ## ▶ Demo (90 seconds)
 
-**[Watch the demo →](https://example.com/demo-link)**  *(replace with your video URL before submission)*
+**[Watch the demo →](https://www.youtube.com/watch?v=j2zn96OmKPQ)**
 
 The agent probes a real artifact, hits a plausibility check, self-corrects, and produces a NIST-anchored timeline — start to finish in ninety seconds.
 
@@ -155,7 +155,7 @@ checklist all live there.
 
 ## Team
 
-Two-person team — Backend Developer + Network/Security Automation Engineer — built this in 15 days for the SANS FindEvil Hackathon. Lessons learned, including where the agent's autonomous reasoning broke down and how we caught it, are written up in the [Devpost submission](https://example.com/devpost).
+Two-person team — Backend Developer + Network/Security Automation Engineer — built this in 15 days for the SANS FindEvil Hackathon. Lessons learned, including where the agent's autonomous reasoning broke down and how we caught it, are written up in the [Devpost submission](https://devpost.com/software/ai-hackathon-project-r09bez).
 
 ## License
 
