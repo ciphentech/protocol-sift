@@ -29,6 +29,18 @@ document is a brief reference so contributors understand where each file in
 
 All paths above are relative to the `protocol-sift` repo root.
 
+### Standalone tests (outside the build gate)
+
+P-11 and P-12 are **standalone** tests — not part of the 71-test pytest suite
+and never run in the build gate. Each needs an external dependency (Plaso tools
+/ a real `.plaso` file, or live network), so they are run by hand on a suitably
+provisioned host rather than auto-continued by the generator skill.
+
+| Step | What landed in `protocol-sift` |
+|------|-------------------------------|
+| P-11 | `analysis-scripts/integration_ntp.sh` — SIFT-workstation integration test for the `psort.py → ntp_enricher` handoff; requires Plaso tools + a real `.plaso` file |
+| P-12 | `analysis-scripts/tests/e2e_ntp_live.py` — live e2e test querying a real NTP server (`pool.ntp.org`); requires `ntplib` + network access |
+
 ---
 
 ## How the prompts map to the enrichment flow
